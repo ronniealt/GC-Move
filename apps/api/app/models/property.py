@@ -49,7 +49,11 @@ class Property(TimestampMixin, Base):
 
     __table_args__ = (
         CheckConstraint("property_type IN ('house', 'townhouse', 'unit', 'acreage', 'other')", name="properties_type_check"),
-        CheckConstraint("status IN ('saved', 'shortlisted', 'inspecting', 'offer', 'rejected', 'sold', 'withdrawn')", name="properties_status_check"),
+        CheckConstraint(
+            "status IN ('saved', 'shortlisted', 'inspecting', 'offer', 'rejected', "
+            "'sold', 'withdrawn', 'ingesting', 'evaluated', 'filtered', 'failed')",
+            name="properties_status_check",
+        ),
         CheckConstraint("flood_risk_category IN ('high', 'medium', 'low', 'none', 'unknown')", name="properties_flood_risk_check"),
         CheckConstraint("source_platform IN ('realestate', 'domain', 'manual', 'agent')", name="properties_platform_check"),
     )

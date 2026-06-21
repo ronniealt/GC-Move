@@ -7,6 +7,7 @@ from sqlalchemy import pool
 
 from app.config import settings
 from app.models.base import Base
+import app.models  # noqa: F401 — registers all ORM models in Base.metadata
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)

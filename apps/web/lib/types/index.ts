@@ -218,12 +218,22 @@ export interface TopPropertyItem {
   hero_image_url: string | null;
 }
 
+export interface UpcomingInspectionItem {
+  id: string;
+  property_id: string;
+  property_address: string;
+  property_suburb: string;
+  scheduled_at: string | null;
+  status: string;
+}
+
 export interface DashboardResponse {
   top_recommendations: TopPropertyItem[];
   properties_reviewed: number;
   new_this_week: number;
   shortlist_count: number;
   recent_journal_count: number;
+  upcoming_inspections: UpcomingInspectionItem[];
 }
 
 // --- Advisor ---
@@ -238,4 +248,215 @@ export interface AdvisorMessageResponse {
   role: "user" | "assistant";
   content: string;
   created_at: string;
+}
+
+export interface AdvisorHistoryResponse {
+  thread_id: string | null;
+  messages: AdvisorMessageResponse[];
+}
+
+// --- Suburbs ---
+
+export interface SuburbMetricResponse {
+  owner_occupier_rate: number | null;
+  owner_occupier_score: number | null;
+  family_density_pct: number | null;
+  family_density_score: number | null;
+  educational_attainment_pct: number | null;
+  educational_attainment_score: number | null;
+  median_weekly_household_income_aud: number | null;
+  median_income_score: number | null;
+  crime_index: number | null;
+  crime_score: number | null;
+  community_engagement_score: number | null;
+  community_score: number | null;
+}
+
+export interface SuburbLifestyleResponse {
+  cafe_restaurant_count: number;
+  gym_fitness_count: number;
+  park_reserve_count: number;
+  shopping_centre_count: number;
+  medical_gp_count: number;
+  supermarket_count: number;
+  burleigh_drive_minutes: number | null;
+  beach_access_minutes: number | null;
+  travel_to_broadbeach_min: number | null;
+  travel_to_airport_min: number | null;
+  burleigh_access_score: number | null;
+  beach_access_score: number | null;
+  wellness_infrastructure_score: number | null;
+  cafe_dining_score: number | null;
+  outdoor_recreation_score: number | null;
+  shopping_score: number | null;
+  lifestyle_score: number | null;
+}
+
+export interface SchoolSummaryResponse {
+  id: string;
+  name: string;
+  sector: string;
+  school_type: string;
+  address_suburb: string;
+  year_range: string | null;
+}
+
+export interface SuburbListItem {
+  id: string;
+  name: string;
+  postcode: string;
+  tier: string | null;
+  tier_label: string;
+  slug: string;
+  community_score: number | null;
+  lifestyle_score: number | null;
+  beach_access_minutes: number | null;
+}
+
+export interface SuburbDetailResponse {
+  id: string;
+  name: string;
+  postcode: string;
+  tier: string | null;
+  tier_label: string;
+  slug: string;
+  latitude: number;
+  longitude: number;
+  lga: string | null;
+  metrics: SuburbMetricResponse | null;
+  lifestyle: SuburbLifestyleResponse | null;
+  schools: SchoolSummaryResponse[];
+}
+
+// --- Schools ---
+
+export interface SchoolMetricResponse {
+  naplan_reading_pct_above_nms: number | null;
+  naplan_numeracy_pct_above_nms: number | null;
+  wellbeing_score: number | null;
+  parent_community_score: number | null;
+  academic_outcomes_score: number | null;
+  commute_score: number | null;
+  extracurricular_score: number | null;
+  pathway_score: number | null;
+  school_score: number | null;
+  attendance_rate_pct: number | null;
+  annual_fee_aud: number | null;
+  has_boarding: boolean;
+  extracurricular_notes: string | null;
+  data_year: number | null;
+}
+
+export interface SchoolListItem {
+  id: string;
+  name: string;
+  school_type: string;
+  sector: string;
+  address_suburb: string;
+  address_postcode: string | null;
+  year_range: string | null;
+  icsea: number | null;
+  total_enrolments: number | null;
+  website_url: string | null;
+  metrics: SchoolMetricResponse | null;
+}
+
+// --- Preferences ---
+
+export interface PreferenceResponse {
+  id: string;
+  family_id: string;
+  attribute: string;
+  category: string;
+  current_weight: number;
+  confidence: number;
+  status: "Emerging" | "Confirmed" | "Contradicted" | "Retired" | "Manual";
+  positive_signal_count: number;
+  negative_signal_count: number;
+  is_deal_breaker: boolean;
+  notes: string | null;
+  last_signal_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PreferenceUpdate {
+  status?: string;
+  current_weight?: number;
+  is_deal_breaker?: boolean;
+  notes?: string;
+}
+
+// --- Journal ---
+
+export interface JournalPropertySnippet {
+  id: string;
+  address_street: string;
+  address_suburb: string;
+  listing_price_aud: number | null;
+}
+
+export interface JournalEntryResponse {
+  id: string;
+  family_id: string;
+  property_id: string | null;
+  suburb_id: string | null;
+  entry_type: "note" | "reflection" | "decision" | "question" | "milestone" | "concern";
+  title: string | null;
+  body: string;
+  mood: "excited" | "positive" | "neutral" | "uncertain" | "concerned" | null;
+  tags: string[] | null;
+  is_pinned: boolean;
+  created_at: string;
+  updated_at: string;
+  property: JournalPropertySnippet | null;
+}
+
+// --- Inspections ---
+
+export interface InspectionPropertySnippet {
+  id: string;
+  address_street: string;
+  address_suburb: string;
+}
+
+export interface InspectionResponse {
+  id: string;
+  family_id: string;
+  property_id: string;
+  inspection_type: string;
+  scheduled_at: string | null;
+  completed_at: string | null;
+  status: "scheduled" | "completed" | "cancelled" | "missed";
+  overall_impression: string | null;
+  notes: string | null;
+  property: InspectionPropertySnippet | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InspectionCreate {
+  property_id: string;
+  scheduled_at: string;
+  notes?: string;
+  inspection_type?: string;
+}
+
+export interface InspectionUpdate {
+  scheduled_at?: string;
+  completed_at?: string;
+  status?: string;
+  notes?: string;
+  overall_impression?: string;
+}
+
+export interface JournalEntryCreate {
+  title?: string;
+  body: string;
+  entry_type?: string;
+  mood?: string;
+  tags?: string[];
+  property_id?: string;
+  suburb_id?: string;
+  is_pinned?: boolean;
 }

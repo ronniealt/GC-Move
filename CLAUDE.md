@@ -1,5 +1,11 @@
 # Gold Coast Move OS — Claude Code Project Guide
 
+## Working Style
+
+**Claude instructs, Ronnie implements.** Claude must never directly edit code files. Instead, provide clear instructions: which file to open, what to change, and the exact replacement text. Ronnie makes all edits himself.
+
+---
+
 ## What This Project Is
 
 Gold Coast Move OS is an AI-powered **Family Decision Intelligence Platform**. It helps families relocate by acting as a trusted advisor — not a property portal. It evaluates properties, suburbs, and schools through the lens of family life outcomes.
@@ -141,11 +147,38 @@ A feature is complete when:
 
 ---
 
+## Build Status
+
+| Phase | Status | Notes |
+|---|---|---|
+| Phase 0 — Foundation | ✅ Complete | Next.js 14, FastAPI, Clerk auth, invite flow, monorepo |
+| Phase 1 — Data layer | ✅ Complete | 34 SQLAlchemy models, 7 Alembic migrations (001–007), seed data (16 suburbs, 5 schools) |
+| Phase 2 — Property ingestion | ✅ Complete | Apify scraper (REA + Domain), GPT-4o-mini qualitative enrichment, background ingestion orchestrator, migration 008, data_quality_score + extraction_confidence |
+| Phase 3 — Scoring engine | ✅ Complete | travel_time, non_negotiables, community/lifestyle/school/property/risk scoring, family_fit, recommendation_service (GPT-4o), evaluation_orchestrator, GET /api/evaluations/{property_id}, migration 009 |
+| Phase 4 — Frontend core | ✅ Complete | ScoreRing/FamilyFitScore/CategoryScoreRow/RecommendationBadge/PropertyCard components; typed API layer (families/properties/evaluations/dashboard); onboarding wizard (5-step); dashboard; property submission + polling; evaluation report; property list; shortlist |
+| Phase 5 — AI Advisor | ✅ Complete | POST /api/advisor/chat + GET /api/advisor/history; family context injection; GPT-4o with 30s timeout + fallback; full chat UI with thread history, thinking indicator, property context banner, suggested prompts |
+| Phase 6 — Intelligence features | ✅ Complete | Suburb list + detail, school comparison, preference profile, decision journal — backend routers + frontend pages |
+| Phase 7 — Polish | ✅ Complete | Inspection tracker (CRUD), dashboard populated (top recs + upcoming inspections), settings page (name/invite/weights/danger zone), PostHog tracking (6 events), ErrorBoundary, active nav state, route loading spinner |
+
+---
+
+## Environment Variables
+
+Both `.env` files are populated:
+- `apps/api/.env` — OpenAI, Apify token + actor IDs, CORS. DATABASE_URL is placeholder (needs Railway PostgreSQL). Clerk keys need adding from web env.
+- `apps/web/.env.local` — Clerk keys set. PostHog + Sentry empty (not needed yet).
+
+Confirmed Apify actor IDs:
+- REA: `memo23/realestate-au-listings`
+- Domain: `fatihtahta/domain-com-au-scraper`
+
+---
+
 ## Open Questions (Resolve Before Building Affected Feature)
 
 | # | Question | Blocks |
 |---|---|---|
 | OQ-001 | Family budget — entered in Family Inputs during onboarding. Make mandatory with opt-out. | Financial Score |
-| OQ-002 | Confirm Apify actor IDs for REA + Domain. Test against 5 real Gold Coast URLs first. | Property ingestion |
+| OQ-002 | ✅ RESOLVED — REA: memo23/realestate-au-listings / Domain: fatihtahta/domain-com-au-scraper | Property ingestion |
 | OQ-005 | Google Maps API key with billing enabled? | Travel time scoring |
 | OQ-007 | ABS 2021 Census data source — CSV download or API? Who loads it? | Community Score |

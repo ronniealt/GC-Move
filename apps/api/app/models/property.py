@@ -1,6 +1,6 @@
 import uuid
 from sqlalchemy import (
-    Boolean, Column, CheckConstraint, DateTime, ForeignKey,
+    Boolean, Column, CheckConstraint, Computed, DateTime, ForeignKey,
     Integer, Numeric, String, Text, func,
 )
 from sqlalchemy.dialects.postgresql import UUID, TSVECTOR
@@ -35,8 +35,11 @@ class Property(TimestampMixin, Base):
     price_range_high_aud = Column(Integer)
     price_is_range = Column(Boolean, nullable=False, default=False)
     description_text = Column(Text)
-    # description_tsvector is GENERATED ALWAYS AS in DB; mapped read-only
-    description_tsvector = Column(TSVECTOR)
+    # GENERATED ALWAYS AS in DB — Computed() prevents SQLAlchemy from writing it
+    description_tsvector = Column(
+        TSVECTOR,
+        Computed("to_tsvector('english', coalesce(description_text, ''))", persisted=True),
+    )
     flood_risk_category = Column(Text, default="unknown")
     flood_risk_source_date = Column(DateTime(timezone=True))
     agent_name = Column(Text)
@@ -65,7 +68,7 @@ class Property(TimestampMixin, Base):
     history = relationship("PropertyHistory", back_populates="property", cascade="all, delete-orphan")
 
 
-class PropertyFeature(TimestampMixin, Base):
+class PropertyFeature(Base):
     __tablename__ = "property_features"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

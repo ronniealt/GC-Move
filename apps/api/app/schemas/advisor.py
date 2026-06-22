@@ -5,8 +5,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 
-class AdvisorMessageRequest(BaseModel):
-    content: str
+class AdvisorChatRequest(BaseModel):
+    message: str
     property_id: Optional[UUID] = None
 
 
@@ -16,10 +16,9 @@ class AdvisorMessageResponse(BaseModel):
     id: UUID
     role: str
     content: str
-    property_id: Optional[UUID]
     created_at: datetime
 
 
 class AdvisorHistoryResponse(BaseModel):
-    thread_id: UUID
+    thread_id: Optional[UUID]
     messages: list[AdvisorMessageResponse]

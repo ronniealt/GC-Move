@@ -16,6 +16,13 @@ class JournalEntryCreate(BaseModel):
     is_pinned: bool = False
 
 
+class JournalPropertySnippet(BaseModel):
+    id: UUID
+    address_street: str
+    address_suburb: str
+    listing_price_aud: Optional[int] = None
+
+
 class JournalEntryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -31,3 +38,4 @@ class JournalEntryResponse(BaseModel):
     is_pinned: bool
     created_at: datetime
     updated_at: datetime
+    property: Optional[JournalPropertySnippet] = None

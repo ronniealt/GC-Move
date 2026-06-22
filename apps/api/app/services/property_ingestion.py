@@ -1,8 +1,11 @@
+import logging
 import uuid as _uuid
 
 import sentry_sdk
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+
+logger = logging.getLogger(__name__)
 
 from app.database import AsyncSessionLocal
 from app.models.location import Suburb
@@ -13,14 +16,19 @@ from app.services.apify_scraper import (
     fetch_property_via_apify,
     map_apify_to_property,
 )
+from app.services.evaluation_orchestrator import run_evaluation
 from app.services.qualitative_enrichment import enrich_qualitative
 
 
 async def ingest_property(property_id: str, url: str, family_id: str) -> None:
+    logger.info("Ingestion started: property_id=%s url=%s", property_id, url)
     try:
         async with AsyncSessionLocal() as db:
             await _do_ingest(property_id, url, family_id, db)
+        logger.info("Ingestion complete, starting evaluation: property_id=%s", property_id)
+        await run_evaluation(property_id, family_id)
     except Exception as e:
+        logger.error("Ingestion failed: property_id=%s error=%s", property_id, e, exc_info=True)
         sentry_sdk.capture_exception(e)
         async with AsyncSessionLocal() as db:
             await _mark_failed(property_id, db)
@@ -81,7 +89,7 @@ async def _do_ingest(property_id: str, url: str, family_id: str, db) -> None:
 
     prop.data_quality_score = _calculate_quality_score(prop, data)
     prop.extraction_confidence = round(prop.data_quality_score / 100, 2)
-    prop.status = "evaluated"
+    # Status stays "ingesting" — evaluation_orchestrator sets it to "evaluated" or "filtered"
     await db.commit()
 
 

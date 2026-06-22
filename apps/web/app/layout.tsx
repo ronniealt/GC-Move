@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import PostHogInit from "@/components/PostHogInit";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -18,7 +19,10 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" className={inter.variable}>
-        <body className="antialiased">{children}</body>
+        <body className="antialiased">
+          <PostHogInit />
+          {children}
+        </body>
       </html>
     </ClerkProvider>
   );

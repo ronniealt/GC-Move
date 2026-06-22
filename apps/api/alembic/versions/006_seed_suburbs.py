@@ -13,7 +13,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute("""
+    op.get_bind().exec_driver_sql("""
     INSERT INTO suburbs (name, postcode, latitude, longitude, tier, abs_sa2_code, police_division, bounding_box) VALUES
       ('Burleigh Heads',      '4220', -28.0841, 153.4504, 'A', '316031121', 'Burleigh',       '{"north":-28.074,"south":-28.097,"east":153.462,"west":153.438}'),
       ('Miami',               '4220', -28.0694, 153.4441, 'A', '316031129', 'Burleigh',       '{"north":-28.059,"south":-28.082,"east":153.452,"west":153.432}'),

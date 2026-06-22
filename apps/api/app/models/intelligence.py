@@ -34,6 +34,10 @@ class PropertyEvaluation(TimestampMixin, Base):
     completion_tokens = Column(Integer)
     total_cost_usd = Column(Numeric(8, 4))
 
+    recommendation_level = Column(Text)
+    meets_non_negotiables = Column(Boolean)
+    action_plan = Column(JSONB)
+
     scores = relationship("EvaluationScore", back_populates="evaluation", uselist=False, cascade="all, delete-orphan")
     per_member = relationship("EvaluationPerMember", back_populates="evaluation", cascade="all, delete-orphan")
     recommendation = relationship("Recommendation", back_populates="evaluation", uselist=False)

@@ -1,10 +1,14 @@
 import asyncio
+import logging
+from datetime import timedelta
 from typing import Optional
 
 from apify_client import ApifyClient
 from pydantic import BaseModel
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class PropertyExtractionError(Exception):
@@ -44,13 +48,27 @@ def _run_apify_sync(url: str) -> dict:
         if "realestate.com.au" in url
         else settings.APIFY_DOMAIN_ACTOR_ID
     )
+    logger.info("Starting Apify run: actor=%s url=%s", actor_id, url)
     run = client.actor(actor_id).call(
-        run_input={"startUrls": [{"url": url}], "maxItems": 1},
-        timeout_secs=60,
+        run_input={
+            "startUrls": [url],
+            "maxItems": 1,
+            "flattenOutput": True,
+            "enrichEmails": False,
+            "includeSurroundingSuburbs": True,
+            "proxy": {"useApifyProxy": True, "apifyProxyGroups": ["RESIDENTIAL"]},
+        },
+        max_items=1,
+        max_total_charge_usd=0.50,
+        wait_duration=timedelta(seconds=600),
     )
-    if not run or not run.get("defaultDatasetId"):
-        raise PropertyExtractionError(f"Apify run failed for: {url}")
-    items = list(client.dataset(run["defaultDatasetId"]).iterate_items())
+    logger.info("Apify run finished: status=%s dataset=%s", run.status if run else None, run.default_dataset_id if run else None)
+    if not run or not run.default_dataset_id:
+        raise PropertyExtractionError(f"Apify run failed (no dataset) for: {url}")
+    if run.status == "FAILED":
+        raise PropertyExtractionError(f"Apify actor FAILED for: {url}")
+    items = list(client.dataset(run.default_dataset_id).iterate_items())
+    logger.info("Apify returned %d item(s) for: %s", len(items), url)
     if not items:
         raise PropertyExtractionError(f"Apify returned no data for: {url}")
     return items[0]
@@ -118,7 +136,9 @@ def _extract_features(raw: dict) -> list[str]:
     feats = raw.get("features") or raw.get("propertyFeatures") or raw.get("listingFeatures") or []
     if not feats:
         return []
-    if feats and isinstance(feats[0], dict):
+    if not isinstance(feats, list):
+        return []
+    if isinstance(feats[0], dict):
         return [f.get("name") or f.get("label") or str(f) for f in feats if isinstance(f, dict)]
     return [str(f) for f in feats if f]
 

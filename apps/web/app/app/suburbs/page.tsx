@@ -17,7 +17,7 @@ const TIER_LABELS: Record<TierFilter, string> = {
 };
 
 export default function SuburbsPage() {
-  const { getToken } = useAuth();
+  const { getToken, isLoaded } = useAuth();
   const [suburbs, setSuburbs] = useState<SuburbListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [tierFilter, setTierFilter] = useState<TierFilter>("All");
@@ -25,6 +25,7 @@ export default function SuburbsPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      if (!isLoaded) return;
       const token = await getToken();
       if (!token || cancelled) return;
       try {
@@ -36,7 +37,7 @@ export default function SuburbsPage() {
     }
     load();
     return () => { cancelled = true; };
-  }, [getToken]);
+  }, [getToken, isLoaded]);
 
   const filtered = tierFilter === "All"
     ? suburbs

@@ -21,7 +21,7 @@ const formatAUD = (price: number | null) => {
 
 export default function ShortlistPage() {
   const router = useRouter();
-  const { getToken } = useAuth();
+  const { getToken, isLoaded } = useAuth();
 
   const [properties, setProperties] = useState<PropertyListResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +29,7 @@ export default function ShortlistPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      if (!isLoaded) return;
       try {
         const token = await getToken();
         if (!token || cancelled) return;
@@ -42,7 +43,7 @@ export default function ShortlistPage() {
     }
     load();
     return () => { cancelled = true; };
-  }, [getToken]);
+  }, [getToken, isLoaded]);
 
   return (
     <div className="p-8 max-w-6xl mx-auto">

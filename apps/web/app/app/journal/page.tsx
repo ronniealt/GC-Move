@@ -106,7 +106,7 @@ function NewEntryForm({ onSave, onCancel, saving }: NewEntryFormProps) {
 
 export default function JournalPage() {
   const router = useRouter();
-  const { getToken } = useAuth();
+  const { getToken, isLoaded } = useAuth();
   const [entries, setEntries] = useState<JournalEntryResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -115,6 +115,7 @@ export default function JournalPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      if (!isLoaded) return;
       const token = await getToken();
       if (!token || cancelled) return;
       try {
@@ -126,7 +127,7 @@ export default function JournalPage() {
     }
     load();
     return () => { cancelled = true; };
-  }, [getToken]);
+  }, [getToken, isLoaded]);
 
   const handleCreate = async (data: { title?: string; body: string; entry_type: string }) => {
     const token = await getToken();

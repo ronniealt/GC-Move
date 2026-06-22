@@ -31,7 +31,7 @@ const WEIGHT_LABELS: Record<string, string> = {
 };
 
 export default function SettingsPage() {
-  const { getToken } = useAuth();
+  const { getToken, isLoaded } = useAuth();
   const router = useRouter();
 
   const [family, setFamily] = useState<FamilyResponse | null>(null);
@@ -52,6 +52,7 @@ export default function SettingsPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      if (!isLoaded) return;
       try {
         const token = await getToken();
         if (!token || cancelled) return;
@@ -68,7 +69,7 @@ export default function SettingsPage() {
     }
     load();
     return () => { cancelled = true; };
-  }, [getToken]);
+  }, [getToken, isLoaded]);
 
   async function handleSaveName() {
     if (!family || !displayName.trim()) return;

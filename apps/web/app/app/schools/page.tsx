@@ -10,7 +10,7 @@ import type { SchoolListItem } from "@/lib/types";
 const FEATURED_ACARA_IDS_NAMES = ["Somerset College", "All Saints Anglican School"];
 
 export default function SchoolsPage() {
-  const { getToken } = useAuth();
+  const { getToken, isLoaded } = useAuth();
   const [schools, setSchools] = useState<SchoolListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [sectorFilter, setSectorFilter] = useState<string>("All");
@@ -18,6 +18,7 @@ export default function SchoolsPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      if (!isLoaded) return;
       const token = await getToken();
       if (!token || cancelled) return;
       try {
@@ -29,7 +30,7 @@ export default function SchoolsPage() {
     }
     load();
     return () => { cancelled = true; };
-  }, [getToken]);
+  }, [getToken, isLoaded]);
 
   const featured = schools.filter((s) => FEATURED_ACARA_IDS_NAMES.includes(s.name));
   const rest = schools.filter((s) => !FEATURED_ACARA_IDS_NAMES.includes(s.name));

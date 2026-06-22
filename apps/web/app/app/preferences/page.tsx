@@ -59,13 +59,14 @@ function PreferenceTag({ pref, onConfirm, onRetire }: PreferenceTagProps) {
 }
 
 export default function PreferencesPage() {
-  const { getToken } = useAuth();
+  const { getToken, isLoaded } = useAuth();
   const [preferences, setPreferences] = useState<PreferenceResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      if (!isLoaded) return;
       const token = await getToken();
       if (!token || cancelled) return;
       try {
@@ -77,7 +78,7 @@ export default function PreferencesPage() {
     }
     load();
     return () => { cancelled = true; };
-  }, [getToken]);
+  }, [getToken, isLoaded]);
 
   const handleConfirm = async (id: string) => {
     const token = await getToken();

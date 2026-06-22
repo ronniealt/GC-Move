@@ -29,7 +29,7 @@ function ScoreItem({ label, score }: { label: string; score: number | null | und
 export default function SuburbDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { getToken } = useAuth();
+  const { getToken, isLoaded } = useAuth();
   const slug = params.slug as string;
 
   const [suburb, setSuburb] = useState<SuburbDetailResponse | null>(null);
@@ -39,6 +39,7 @@ export default function SuburbDetailPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      if (!isLoaded) return;
       const token = await getToken();
       if (!token || cancelled) return;
       try {
@@ -52,7 +53,7 @@ export default function SuburbDetailPage() {
     }
     load();
     return () => { cancelled = true; };
-  }, [slug, getToken]);
+  }, [slug, getToken, isLoaded]);
 
   if (loading) {
     return (

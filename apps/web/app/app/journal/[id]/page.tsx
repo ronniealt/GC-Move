@@ -42,7 +42,7 @@ function formatDate(dateStr: string) {
 export default function JournalEntryPage() {
   const params = useParams();
   const router = useRouter();
-  const { getToken } = useAuth();
+  const { getToken, isLoaded } = useAuth();
   const id = params.id as string;
 
   const [entry, setEntry] = useState<JournalEntryResponse | null>(null);
@@ -51,6 +51,7 @@ export default function JournalEntryPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      if (!isLoaded) return;
       const token = await getToken();
       if (!token || cancelled) return;
       try {
@@ -62,7 +63,7 @@ export default function JournalEntryPage() {
     }
     load();
     return () => { cancelled = true; };
-  }, [id, getToken]);
+  }, [id, getToken, isLoaded]);
 
   const handleDelete = async () => {
     const token = await getToken();

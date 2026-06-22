@@ -118,7 +118,7 @@ function InspectionCard({
 }
 
 export default function InspectionsPage() {
-  const { getToken } = useAuth();
+  const { getToken, isLoaded } = useAuth();
 
   const [inspections, setInspections] = useState<InspectionResponse[]>([]);
   const [properties, setProperties] = useState<PropertyListResponse[]>([]);
@@ -138,6 +138,7 @@ export default function InspectionsPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      if (!isLoaded) return;
       try {
         const token = await getToken();
         if (!token || cancelled) return;
@@ -157,7 +158,7 @@ export default function InspectionsPage() {
     }
     load();
     return () => { cancelled = true; };
-  }, [getToken]);
+  }, [getToken, isLoaded]);
 
   const upcoming = inspections.filter((i) => i.status === "scheduled");
   const past = inspections.filter((i) => i.status !== "scheduled");

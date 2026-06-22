@@ -149,6 +149,8 @@ A feature is complete when:
 
 ## Build Status
 
+**v1.0.0 committed to git — all 7 phases complete and end-to-end tested locally.**
+
 | Phase | Status | Notes |
 |---|---|---|
 | Phase 0 — Foundation | ✅ Complete | Next.js 14, FastAPI, Clerk auth, invite flow, monorepo |
@@ -159,6 +161,10 @@ A feature is complete when:
 | Phase 5 — AI Advisor | ✅ Complete | POST /api/advisor/chat + GET /api/advisor/history; family context injection; GPT-4o with 30s timeout + fallback; full chat UI with thread history, thinking indicator, property context banner, suggested prompts |
 | Phase 6 — Intelligence features | ✅ Complete | Suburb list + detail, school comparison, preference profile, decision journal — backend routers + frontend pages |
 | Phase 7 — Polish | ✅ Complete | Inspection tracker (CRUD), dashboard populated (top recs + upcoming inspections), settings page (name/invite/weights/danger zone), PostHog tracking (6 events), ErrorBoundary, active nav state, route loading spinner |
+
+## Known Issues (Next Session)
+
+- **Next.js hot-reload chunk 404s** — Occasionally JS chunks 404 after hot reload. Fix: restart the Next.js dev server (`npm run dev`).
 
 ---
 

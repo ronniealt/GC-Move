@@ -24,7 +24,7 @@ function formatDateTime(dt: string | null) {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { getToken } = useAuth();
+  const { getToken, isLoaded } = useAuth();
 
   const [family, setFamily] = useState<FamilyResponse | null>(null);
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
@@ -34,6 +34,7 @@ export default function DashboardPage() {
     let cancelled = false;
 
     async function load() {
+      if (!isLoaded) return;
       try {
         const token = await getToken();
         if (!token || cancelled) return;
@@ -53,7 +54,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [getToken]);
+  }, [getToken, isLoaded]);
 
   const greeting = () => {
     const hour = new Date().getHours();

@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/ronniea/Library/Mobile Documents/com~apple~CloudDocs/Claude Projects/GC Move/apps/web/**)",
+      "Bash(npx tsc *)",
+      "Bash(npx *)",
+      "Bash(/Users/ronniea/Library/Mobile Documents/com~apple~CloudDocs/Claude Projects/GC Move/apps/web/node_modules/.bin/tsc *)",
+      "Bash(/Users/ronniea/Library/Mobile Documents/com~apple~CloudDocs/Claude Projects/GC Move/apps/web/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/node_modules/.bin/tsc *)",
+      "Bash(python3 *)",
+      "Bash(bash *)",
+      "Bash(npm install *)",
+      "Bash(python -c \"from app.main import app; print\\('OK'\\)\")",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(python -c ' *)",
+      "Bash(python -c \"from app.models.property import Property; col = Property.__table__.c.description_tsvector; print\\('system:', col.system, '| in INSERT:', not col.system\\)\")",
+      "Bash(pkill -f \"uvicorn app.main:app\")",
+      "Bash(.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload)",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(.venv/bin/alembic upgrade *)",
+      "Bash(.venv/bin/python -c ' *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}

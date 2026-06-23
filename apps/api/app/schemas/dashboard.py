@@ -34,6 +34,7 @@ class UpcomingInspectionItem(BaseModel):
 
 
 class DashboardResponse(BaseModel):
+    family_display_name: str
     top_recommendations: list[TopPropertyItem]
     properties_reviewed: int
     new_this_week: int

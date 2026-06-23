@@ -1,3 +1,4 @@
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -5,6 +6,8 @@ from uuid import UUID
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
+
+logger = logging.getLogger(__name__)
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,18 +43,19 @@ async def _send_invite_email(
     token: str,
 ) -> None:
     if not settings.RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not set — invite email not sent to %s", to_email)
         return
     invite_url = f"http://localhost:3000/invite/accept?token={token}"
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            await client.post(
+            resp = await client.post(
                 "https://api.resend.com/emails",
                 headers={
                     "Authorization": f"Bearer {settings.RESEND_API_KEY}",
                     "Content-Type": "application/json",
                 },
                 json={
-                    "from": "GC Move OS <noreply@gcmoveos.app>",
+                    "from": "GC Move OS <onboarding@resend.dev>",
                     "to": [to_email],
                     "subject": f"Join {family_name} on GC Move OS",
                     "html": (
@@ -61,8 +65,15 @@ async def _send_invite_email(
                     ),
                 },
             )
-    except Exception:
-        pass  # email is best-effort
+            if resp.status_code >= 400:
+                logger.error(
+                    "Resend API error sending invite to %s: %s %s",
+                    to_email, resp.status_code, resp.text,
+                )
+            else:
+                logger.info("Invite email sent to %s", to_email)
+    except Exception as e:
+        logger.error("Failed to send invite email to %s: %s", to_email, e)
 
 
 @router.post("", response_model=FamilyResponse, status_code=status.HTTP_201_CREATED)

@@ -133,12 +133,25 @@ def _extract_images(raw: dict) -> list[str]:
 
 
 def _extract_features(raw: dict) -> list[str]:
-    feats = raw.get("features") or raw.get("propertyFeatures") or raw.get("listingFeatures") or []
-    if not feats:
+    feats = (
+        raw.get("features")
+        or raw.get("propertyFeatures")
+        or raw.get("listingFeatures")
+        or raw.get("outdoorFeatures")
+        or raw.get("generalFeatures")
+        or raw.get("indoorFeatures")
+        or []
+    )
+    # Some actors return a dict of lists (e.g. {"outdoor": [...], "indoor": [...]})
+    if isinstance(feats, dict):
+        merged = []
+        for v in feats.values():
+            if isinstance(v, list):
+                merged.extend(v)
+        feats = merged
+    if not feats or not isinstance(feats, list):
         return []
-    if not isinstance(feats, list):
-        return []
-    if isinstance(feats[0], dict):
+    if feats and isinstance(feats[0], dict):
         return [f.get("name") or f.get("label") or str(f) for f in feats if isinstance(f, dict)]
     return [str(f) for f in feats if f]
 

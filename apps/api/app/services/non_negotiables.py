@@ -25,12 +25,18 @@ def check_non_negotiables(
         )
 
     feature_keys = {f.feature_key.lower() for f in features}
+    description = (prop.description_text or "").lower()
 
-    if not any("pool" in k for k in feature_keys):
+    pool_in_features = any("pool" in k for k in feature_keys)
+    pool_in_description = any(
+        kw in description for kw in ("swimming pool", "inground pool", "in-ground pool", "pool")
+    )
+
+    if not pool_in_features and not pool_in_description:
         return NonNegotiableResult(
             passed=False,
             failure_key="has_pool",
-            failure_reason="No pool detected in property features",
+            failure_reason="No pool detected in property features or description",
         )
 
     if family.budget_max_aud and prop.price_range_high_aud:

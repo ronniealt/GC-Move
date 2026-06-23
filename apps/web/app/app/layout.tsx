@@ -1,8 +1,11 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
+import { Sun, Moon } from "lucide-react";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +24,9 @@ const navLinks = [
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
@@ -47,8 +53,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
-        <div className="px-4 py-4 border-t">
+        <div className="px-4 py-4 border-t flex items-center justify-between">
           <UserButton />
+          {mounted && (
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+          )}
         </div>
       </aside>
       <main className="flex-1 overflow-y-auto">

@@ -49,12 +49,13 @@ function statusBadge(status: string) {
 
 export default function PropertiesPage() {
   const router = useRouter();
-  const { getToken } = useAuth();
+  const { getToken, isLoaded } = useAuth();
 
   const [properties, setProperties] = useState<PropertyListResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isLoaded) return;
     let cancelled = false;
     async function load() {
       try {
@@ -70,7 +71,7 @@ export default function PropertiesPage() {
     }
     load();
     return () => { cancelled = true; };
-  }, [getToken]);
+  }, [getToken, isLoaded]);
 
   return (
     <div className="p-8 max-w-6xl mx-auto">

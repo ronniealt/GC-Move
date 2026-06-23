@@ -149,7 +149,7 @@ A feature is complete when:
 
 ## Build Status
 
-**v1.0.0 committed to git — all 7 phases complete and end-to-end tested locally.**
+**v1.1.0 — Post-launch fixes and product improvements (2026-06-23)**
 
 | Phase | Status | Notes |
 |---|---|---|
@@ -162,21 +162,50 @@ A feature is complete when:
 | Phase 6 — Intelligence features | ✅ Complete | Suburb list + detail, school comparison, preference profile, decision journal — backend routers + frontend pages |
 | Phase 7 — Polish | ✅ Complete | Inspection tracker (CRUD), dashboard populated (top recs + upcoming inspections), settings page (name/invite/weights/danger zone), PostHog tracking (6 events), ErrorBoundary, active nav state, route loading spinner |
 
-## Known Issues (Next Session)
+## Post-Launch Fixes (v1.1.0 — 2026-06-23)
+
+| Fix | Files Changed |
+|---|---|
+| `isLoaded` guard added to all 10 page `useEffect` hooks (pages were calling `getToken()` before Clerk was ready) | All pages under `apps/web/app/app/` + `apps/web/app/app/properties/page.tsx` |
+| Pool detection false negative — properties with pools in description but not structured features were failing non-negotiables | `apps/api/app/services/non_negotiables.py`, `apps/api/app/services/apify_scraper.py` |
+| Dark mode default with light/dark toggle in sidebar | `apps/web/components/ThemeProvider.tsx` (new), `apps/web/app/layout.tsx`, `apps/web/app/app/layout.tsx` |
+| Dashboard reduced from 2 API calls to 1 — `family_display_name` added to dashboard response | `apps/api/app/schemas/dashboard.py`, `apps/api/app/routers/dashboard.py`, `apps/web/app/app/dashboard/page.tsx`, `apps/web/lib/types/index.ts` |
+| Dashboard backend: 4 sequential COUNT queries merged into 1 SQL query | `apps/api/app/routers/dashboard.py` |
+| API connection pool pre-warm on startup — eliminates cold-start latency on first request | `apps/api/app/main.py` (lifespan handler) |
+| Request timing middleware — logs `METHOD /path → status Xms` for every request | `apps/api/app/main.py` |
+| Invite email: RESEND_API_KEY missing now logs a warning instead of silently doing nothing; `from` address changed to `onboarding@resend.dev` (no domain verification needed) | `apps/api/app/routers/families.py` |
+| `FEATURES.md` created — persistent feature backlog with P1–P5 priorities | `FEATURES.md` (new) |
+
+## Known Issues
 
 - **Next.js hot-reload chunk 404s** — Occasionally JS chunks 404 after hot reload. Fix: restart the Next.js dev server (`npm run dev`).
+- **Slow dashboard/properties in dev** — Root cause: `DATABASE_URL` points to remote Railway PostgreSQL. Every query pays network latency (~500–800ms/round trip). Fix for dev: run a local PostgreSQL via Docker and point `DATABASE_URL` to localhost. Railway DB stays as production DB. See docker command below.
+
+```bash
+# Local dev DB (fast)
+docker run -d --name gcmove-db \
+  -e POSTGRES_USER=gcmove -e POSTGRES_PASSWORD=gcmove -e POSTGRES_DB=gcmove \
+  -p 5432:5432 postgres:15
+
+# Then in apps/api/.env:
+DATABASE_URL=postgresql+asyncpg://gcmove:gcmove@localhost:5432/gcmove
+
+# Run migrations
+cd apps/api && alembic upgrade head
+```
 
 ---
 
 ## Environment Variables
 
-Both `.env` files are populated:
-- `apps/api/.env` — OpenAI, Apify token + actor IDs, CORS. DATABASE_URL is placeholder (needs Railway PostgreSQL). Clerk keys need adding from web env.
-- `apps/web/.env.local` — Clerk keys set. PostHog + Sentry empty (not needed yet).
+- `apps/api/.env` — OpenAI ✅, Apify ✅, Clerk secret key ✅, DATABASE_URL → Railway PostgreSQL. `RESEND_API_KEY` is empty — add to enable invite emails. `CLERK_PUBLISHABLE_KEY` missing from api env.
+- `apps/web/.env.local` — Clerk keys ✅. PostHog + Sentry empty (not needed yet).
 
 Confirmed Apify actor IDs:
 - REA: `memo23/realestate-au-listings`
 - Domain: `fatihtahta/domain-com-au-scraper`
+
+Next feature backlog is tracked in `FEATURES.md`.
 
 ---
 

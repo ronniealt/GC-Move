@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm --version)",
+      "Bash(npm --version)",
+      "Bash(pip3 --version)",
+      "Bash(pyenv --version)",
+      "Read(//usr/local/bin/**)",
+      "Read(//Users/ronniea/.local/bin/**)",
+      "Read(//Library/Frameworks/Python.framework/**)",
+      "Bash(npm install *)",
+      "Bash(npx create-next-app@latest apps/web --typescript --tailwind --app --no-eslint --no-src-dir --no-import-alias --yes)",
+      "Bash(npx create-next-app@14 web --typescript --tailwind --app --no-eslint --no-src-dir --no-import-alias --yes)",
+      "Bash(npx shadcn@latest init --yes --defaults)",
+      "Bash(npx shadcn@latest add card badge dialog input label select separator skeleton tabs textarea toast --yes)",
+      "Bash(npx shadcn@latest add card badge dialog input label select separator skeleton tabs textarea sonner --yes)",
+      "Bash(npx tsc *)",
+      "Bash(NEXT_PUBLIC_API_URL=http://localhost:8000 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_placeholder CLERK_SECRET_KEY=sk_test_placeholder npm run build)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(python -c ' *)",
+      "Bash(python3 -c ' *)",
+      "Bash(pip3 show *)",
+      "Bash(pip3 list *)",
+      "Bash(python3 -m py_compile app/services/travel_time.py app/services/non_negotiables.py app/services/community_scoring.py app/services/lifestyle_scoring.py app/services/school_scoring.py app/services/property_scoring.py app/services/risk_scoring.py app/services/family_fit.py app/ai/prompts/recommendation.py app/services/recommendation_service.py app/services/evaluation_orchestrator.py app/routers/evaluations.py app/schemas/evaluation.py app/services/property_ingestion.py app/main.py app/models/intelligence.py alembic/versions/009_scoring_engine_columns.py)",
+      "Bash(python3 -m py_compile app/services/evaluation_orchestrator.py)"
+    ]
+  }
+}

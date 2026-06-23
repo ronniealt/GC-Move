@@ -228,6 +228,7 @@ export interface UpcomingInspectionItem {
 }
 
 export interface DashboardResponse {
+  family_display_name: string;
   top_recommendations: TopPropertyItem[];
   properties_reviewed: number;
   new_this_week: number;

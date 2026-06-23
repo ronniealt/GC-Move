@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -34,34 +34,21 @@ async def get_dashboard(
 ) -> DashboardResponse:
     one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
 
-    # Properties reviewed (total)
-    total_result = await db.execute(
-        select(func.count(Property.id)).where(
+    # Merge all 3 property counts into a single query
+    counts_result = await db.execute(
+        select(
+            func.count(Property.id).label("total"),
+            func.count(case((Property.created_at >= one_week_ago, Property.id))).label("new_this_week"),
+            func.count(case((Property.status == "shortlisted", Property.id))).label("shortlist"),
+        ).where(
             Property.family_id == family.id,
             Property.deleted_at.is_(None),
         )
     )
-    properties_reviewed = total_result.scalar_one() or 0
-
-    # New this week
-    new_result = await db.execute(
-        select(func.count(Property.id)).where(
-            Property.family_id == family.id,
-            Property.deleted_at.is_(None),
-            Property.created_at >= one_week_ago,
-        )
-    )
-    new_this_week = new_result.scalar_one() or 0
-
-    # Shortlist count
-    shortlist_result = await db.execute(
-        select(func.count(Property.id)).where(
-            Property.family_id == family.id,
-            Property.deleted_at.is_(None),
-            Property.status == "shortlisted",
-        )
-    )
-    shortlist_count = shortlist_result.scalar_one() or 0
+    counts_row = counts_result.one()
+    properties_reviewed = counts_row.total or 0
+    new_this_week = counts_row.new_this_week or 0
+    shortlist_count = counts_row.shortlist or 0
 
     # Recent journal entries (last 7 days)
     journal_result = await db.execute(
@@ -168,6 +155,7 @@ async def get_dashboard(
     ]
 
     return DashboardResponse(
+        family_display_name=family.display_name,
         top_recommendations=top_recs,
         properties_reviewed=properties_reviewed,
         new_this_week=new_this_week,

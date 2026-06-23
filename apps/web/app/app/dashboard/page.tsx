@@ -8,8 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PropertyCard } from "@/components/property/PropertyCard";
 import { getDashboard } from "@/lib/api/dashboard";
-import { getMyFamily } from "@/lib/api/families";
-import type { DashboardResponse, FamilyResponse } from "@/lib/types";
+import type { DashboardResponse } from "@/lib/types";
 
 function formatDateTime(dt: string | null) {
   if (!dt) return "TBD";
@@ -26,23 +25,19 @@ export default function DashboardPage() {
   const router = useRouter();
   const { getToken, isLoaded } = useAuth();
 
-  const [family, setFamily] = useState<FamilyResponse | null>(null);
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isLoaded) return;
     let cancelled = false;
 
     async function load() {
-      if (!isLoaded) return;
       try {
         const token = await getToken();
         if (!token || cancelled) return;
-        const [fam, dash] = await Promise.all([getMyFamily(token), getDashboard(token)]);
-        if (!cancelled) {
-          setFamily(fam);
-          setDashboard(dash);
-        }
+        const dash = await getDashboard(token);
+        if (!cancelled) setDashboard(dash);
       } catch {
         // family may not exist yet
       } finally {
@@ -67,7 +62,7 @@ export default function DashboardPage() {
     <div className="p-8 max-w-6xl mx-auto space-y-8">
       <div>
         <h1 className="text-3xl font-semibold">
-          {greeting()}{family ? `, ${family.display_name}` : " there"}
+          {greeting()}{dashboard ? `, ${dashboard.family_display_name}` : " there"}
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">
           Here&apos;s what&apos;s happening with your move.

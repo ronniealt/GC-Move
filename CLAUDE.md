@@ -196,6 +196,48 @@ cd apps/api && alembic upgrade head
 
 ---
 
+## New Machine Setup
+
+Clone the repo, then run these steps in order:
+
+```bash
+# 1. Frontend deps
+cd apps/web && npm install
+
+# 2. Backend deps
+cd apps/api && pip install -r requirements.txt
+
+# 3. Local dev DB (avoids Railway latency in dev)
+docker run -d --name gcmove-db \
+  -e POSTGRES_USER=gcmove -e POSTGRES_PASSWORD=gcmove -e POSTGRES_DB=gcmove \
+  -p 5432:5432 postgres:15
+
+# 4. Copy env files and fill in values (see Environment Variables section below)
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env.local
+
+# 5. Run all migrations
+cd apps/api && alembic upgrade head
+
+# 6. Start backend (from apps/api)
+uvicorn app.main:app --reload --port 8000
+
+# 7. Start frontend (from apps/web, new terminal)
+npm run dev
+```
+
+The app runs at http://localhost:3000. The API runs at http://localhost:8000.
+
+**Required env values to fill in on a new machine:**
+- `OPENAI_API_KEY` — OpenAI console
+- `APIFY_API_TOKEN` — Apify console
+- `CLERK_SECRET_KEY` + `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` — Clerk dashboard
+- `DATABASE_URL` — use `postgresql+asyncpg://gcmove:gcmove@localhost:5432/gcmove` for local dev
+- `GOOGLE_MAPS_API_KEY` — Google Cloud console (Distance Matrix API must be enabled)
+- `RESEND_API_KEY` — Resend console (optional — invite emails disabled without it)
+
+---
+
 ## Environment Variables
 
 - `apps/api/.env` — OpenAI ✅, Apify ✅, Clerk secret key ✅, DATABASE_URL → Railway PostgreSQL. `RESEND_API_KEY` is empty — add to enable invite emails. `CLERK_PUBLISHABLE_KEY` missing from api env.

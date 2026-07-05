@@ -2,7 +2,8 @@ import logging
 import uuid as _uuid
 
 import sentry_sdk
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,10 @@ async def ingest_property(property_id: str, url: str, family_id: str) -> None:
     logger.info("Ingestion started: property_id=%s url=%s", property_id, url)
     try:
         async with AsyncSessionLocal() as db:
-            await _do_ingest(property_id, url, family_id, db)
+            is_duplicate = await _do_ingest(property_id, url, family_id, db)
+        if is_duplicate:
+            logger.info("Ingestion found a duplicate listing, skipping evaluation: property_id=%s", property_id)
+            return
         logger.info("Ingestion complete, starting evaluation: property_id=%s", property_id)
         await run_evaluation(property_id, family_id)
     except Exception as e:
@@ -34,7 +38,9 @@ async def ingest_property(property_id: str, url: str, family_id: str) -> None:
             await _mark_failed(property_id, db)
 
 
-async def _do_ingest(property_id: str, url: str, family_id: str, db) -> None:
+async def _do_ingest(property_id: str, url: str, family_id: str, db) -> bool:
+    """Returns True if this listing turned out to be a duplicate of an existing
+    active Property row for this family (evaluation should be skipped)."""
     pid = _uuid.UUID(property_id)
     fid = _uuid.UUID(family_id)
 
@@ -46,7 +52,7 @@ async def _do_ingest(property_id: str, url: str, family_id: str, db) -> None:
     )
     prop = result.scalar_one_or_none()
     if prop is None:
-        return
+        return False
 
     raw = await fetch_property_via_apify(url)
     data = map_apify_to_property(raw, url)
@@ -90,7 +96,21 @@ async def _do_ingest(property_id: str, url: str, family_id: str, db) -> None:
     prop.data_quality_score = _calculate_quality_score(prop, data)
     prop.extraction_confidence = round(prop.data_quality_score / 100, 2)
     # Status stays "ingesting" — evaluation_orchestrator sets it to "evaluated" or "filtered"
-    await db.commit()
+    try:
+        await db.commit()
+        return False
+    except IntegrityError:
+        # This family already has an active Property row for this exact listing
+        # (ux_properties_family_source_listing) — re-submission of the same URL,
+        # or discovery surfacing something already known. Not a real failure.
+        await db.rollback()
+        logger.info(
+            "Duplicate listing detected, marking as duplicate: property_id=%s source_listing_id=%s",
+            property_id, data.source_listing_id,
+        )
+        await db.execute(update(Property).where(Property.id == pid).values(status="duplicate"))
+        await db.commit()
+        return True
 
 
 def _apply_extracted_data(prop: Property, data: ExtractedPropertyData) -> None:

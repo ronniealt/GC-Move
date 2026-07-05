@@ -43,6 +43,13 @@ export function PropertyCard({ property, onClick }: PropertyCardProps) {
         <div className="absolute top-2 right-2">
           <RecommendationBadge level={property.status} size="sm" />
         </div>
+        {property.auto_discovered && !property.viewed_at && (
+          <div className="absolute top-2 left-2">
+            <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
+              New
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Body */}

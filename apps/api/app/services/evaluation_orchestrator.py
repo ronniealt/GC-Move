@@ -15,7 +15,7 @@ from app.models.intelligence import (
     Recommendation,
     RecommendationExplanation,
 )
-from app.models.location import School, Suburb, SuburbLifestyleAsset, SuburbMetric
+from app.models.location import School, SchoolCatchment, Suburb, SuburbLifestyleAsset, SuburbMetric
 from app.models.property import Property, PropertyFeature
 from app.services.community_scoring import calculate_community_score
 from app.services.family_fit import (
@@ -69,6 +69,7 @@ async def _evaluate(property_id: str, family_id: str, db) -> None:
         .options(
             selectinload(Family.members),
             selectinload(Family.preferences),
+            selectinload(Family.non_negotiables),
         )
     )
     family: Optional[Family] = family_result.scalar_one_or_none()
@@ -116,7 +117,25 @@ async def _evaluate(property_id: str, family_id: str, db) -> None:
         burleigh_mins = beach_mins = None
 
     # ── 4. Non-negotiable check ───────────────────────────────────────────────
-    nn_result = check_non_negotiables(prop, family, features)
+    school_catchment_met: Optional[dict[str, bool]] = None
+    catchment_criteria = [c for c in family.non_negotiables if c.criterion_key == "school_catchment"]
+    if catchment_criteria and prop.suburb_id is not None:
+        school_catchment_met = {}
+        for criterion in catchment_criteria:
+            school_result = await db.execute(select(School).where(School.name == criterion.value))
+            school = school_result.scalar_one_or_none()
+            if school is None:
+                school_catchment_met[criterion.value] = False
+                continue
+            catchment_result = await db.execute(
+                select(SchoolCatchment).where(
+                    SchoolCatchment.school_id == school.id,
+                    SchoolCatchment.suburb_id == prop.suburb_id,
+                )
+            )
+            school_catchment_met[criterion.value] = catchment_result.scalar_one_or_none() is not None
+
+    nn_result = check_non_negotiables(prop, family, features, school_catchment_met)
     meets_non_negotiables = nn_result.passed
 
     if not nn_result.passed:

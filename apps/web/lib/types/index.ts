@@ -13,6 +13,7 @@ export interface FamilyResponse {
   budget_min_aud: number | null;
   budget_max_aud: number | null;
   target_move_date: string | null;
+  target_move_timeline: string | null;
   is_active: boolean;
   onboarding_completed: boolean;
   scoring_model_version: string;
@@ -51,11 +52,51 @@ export interface FamilyUpdate {
   budget_min_aud?: number;
   budget_max_aud?: number;
   target_move_date?: string;
+  target_move_timeline?: string;
+  onboarding_completed?: boolean;
   weight_community?: number;
   weight_lifestyle?: number;
   weight_school?: number;
   weight_property?: number;
   weight_financial?: number;
+}
+
+export interface NonNegotiablesSetRequest {
+  labels: string[];
+}
+
+export interface FamilyNonNegotiableResponse {
+  criterion_key: string;
+  comparator: "eq" | "gte" | "lte" | "has";
+  value: string;
+  label: string | null;
+  source: "onboarding" | "settings" | "manual";
+}
+
+export interface SuburbTargetsSetRequest {
+  suburb_ids: string[];
+}
+
+export interface FamilySuburbsResponse {
+  suburb_ids: string[];
+}
+
+export interface NotificationSettingsUpdate {
+  email_new_evaluation?: boolean;
+  email_rank_change?: boolean;
+  email_daily_digest?: boolean;
+  email_inspection_reminder?: boolean;
+  push_enabled?: boolean;
+  digest_time?: string;
+}
+
+export interface NotificationSettingsResponse {
+  email_new_evaluation: boolean;
+  email_rank_change: boolean;
+  email_daily_digest: boolean;
+  email_inspection_reminder: boolean;
+  push_enabled: boolean;
+  digest_time: string | null;
 }
 
 export interface FamilyMemberCreate {
@@ -120,6 +161,8 @@ export interface PropertyResponse {
   is_favourite: boolean;
   family_notes: string | null;
   created_at: string;
+  auto_discovered: boolean;
+  viewed_at: string | null;
   features: PropertyFeatureResponse[];
   images: PropertyImageResponse[];
 }
@@ -136,6 +179,8 @@ export interface PropertyListResponse {
   status: PropertyStatus;
   is_favourite: boolean;
   created_at: string;
+  auto_discovered: boolean;
+  viewed_at: string | null;
 }
 
 export interface PropertyIngestRequest {
@@ -216,6 +261,8 @@ export interface TopPropertyItem {
   suburb_tier: string | null;
   scores: EvaluationScoresResponse | null;
   hero_image_url: string | null;
+  auto_discovered: boolean;
+  viewed_at: string | null;
 }
 
 export interface UpcomingInspectionItem {

@@ -17,8 +17,12 @@ export function ingestProperty(
   });
 }
 
-export function listProperties(token: string): Promise<PropertyListResponse[]> {
-  return apiCall("/api/properties", { method: "GET", token });
+export function listProperties(
+  token: string,
+  discovered_only?: boolean
+): Promise<PropertyListResponse[]> {
+  const query = discovered_only ? "?discovered_only=true" : "";
+  return apiCall(`/api/properties${query}`, { method: "GET", token });
 }
 
 export function getProperty(
@@ -38,4 +42,11 @@ export function updateProperty(
     body: JSON.stringify(body),
     token,
   });
+}
+
+export function markPropertyViewed(
+  id: string,
+  token: string
+): Promise<PropertyResponse> {
+  return apiCall(`/api/properties/${id}/view`, { method: "POST", token });
 }

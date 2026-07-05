@@ -49,12 +49,14 @@ class Property(TimestampMixin, Base):
     status = Column(Text, nullable=False, default="saved")
     is_favourite = Column(Boolean, nullable=False, default=False)
     family_notes = Column(Text)
+    auto_discovered = Column(Boolean, nullable=False, default=False)
+    viewed_at = Column(DateTime(timezone=True))
 
     __table_args__ = (
         CheckConstraint("property_type IN ('house', 'townhouse', 'unit', 'acreage', 'other')", name="properties_type_check"),
         CheckConstraint(
             "status IN ('saved', 'shortlisted', 'inspecting', 'offer', 'rejected', "
-            "'sold', 'withdrawn', 'ingesting', 'evaluated', 'filtered', 'failed')",
+            "'sold', 'withdrawn', 'ingesting', 'evaluated', 'filtered', 'failed', 'duplicate')",
             name="properties_status_check",
         ),
         CheckConstraint("flood_risk_category IN ('high', 'medium', 'low', 'none', 'unknown')", name="properties_flood_risk_check"),

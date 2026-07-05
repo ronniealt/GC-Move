@@ -14,12 +14,14 @@ interface OnboardingState {
   budgetMax: string;
   moveTimeline: string;
   nonNegotiables: string[];
+  targetSuburbIds: string[];
   setStep: (step: number) => void;
   setFamilyName: (name: string) => void;
   setMembers: (members: FamilyMemberDraft[]) => void;
   setBudget: (min: string, max: string) => void;
   setMoveTimeline: (timeline: string) => void;
   setNonNegotiables: (items: string[]) => void;
+  setTargetSuburbIds: (ids: string[]) => void;
   reset: () => void;
 }
 
@@ -31,6 +33,7 @@ const initialState = {
   budgetMax: "",
   moveTimeline: "",
   nonNegotiables: [],
+  targetSuburbIds: [],
 };
 
 export const useOnboardingStore = create<OnboardingState>((set) => ({
@@ -41,5 +44,6 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
   setBudget: (budgetMin, budgetMax) => set({ budgetMin, budgetMax }),
   setMoveTimeline: (moveTimeline) => set({ moveTimeline }),
   setNonNegotiables: (nonNegotiables) => set({ nonNegotiables }),
+  setTargetSuburbIds: (targetSuburbIds) => set({ targetSuburbIds }),
   reset: () => set(initialState),
 }));

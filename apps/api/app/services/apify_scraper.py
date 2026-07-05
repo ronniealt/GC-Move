@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from datetime import timedelta
 from typing import Optional
 
 from apify_client import ApifyClient
@@ -59,15 +58,16 @@ def _run_apify_sync(url: str) -> dict:
             "proxy": {"useApifyProxy": True, "apifyProxyGroups": ["RESIDENTIAL"]},
         },
         max_items=1,
-        max_total_charge_usd=0.50,
-        wait_duration=timedelta(seconds=600),
+        timeout_secs=600,
     )
-    logger.info("Apify run finished: status=%s dataset=%s", run.status if run else None, run.default_dataset_id if run else None)
-    if not run or not run.default_dataset_id:
+    dataset_id = run.get("defaultDatasetId") if run else None
+    run_status = run.get("status") if run else None
+    logger.info("Apify run finished: status=%s dataset=%s", run_status, dataset_id)
+    if not run or not dataset_id:
         raise PropertyExtractionError(f"Apify run failed (no dataset) for: {url}")
-    if run.status == "FAILED":
+    if run_status == "FAILED":
         raise PropertyExtractionError(f"Apify actor FAILED for: {url}")
-    items = list(client.dataset(run.default_dataset_id).iterate_items())
+    items = list(client.dataset(dataset_id).iterate_items())
     logger.info("Apify returned %d item(s) for: %s", len(items), url)
     if not items:
         raise PropertyExtractionError(f"Apify returned no data for: {url}")
@@ -76,6 +76,88 @@ def _run_apify_sync(url: str) -> dict:
 
 async def fetch_property_via_apify(url: str) -> dict:
     return await asyncio.to_thread(_run_apify_sync, url)
+
+
+class DiscoveredListing(BaseModel):
+    """Lightweight candidate from a search-mode Apify call — enough to dedup
+    and pre-filter before spending a full detail scrape via fetch_property_via_apify."""
+    url: str
+    source_listing_id: str
+    source_platform: str
+    price_aud: Optional[int] = None
+
+
+def _build_search_input(platform: str, suburb_name: str, filters: dict, max_items: int) -> dict:
+    if platform == "realestate":
+        return {
+            "searchByFilters": {
+                "country": "AU",
+                "suburb": suburb_name,
+                "state": "QLD",
+                "channel": "buy",
+            },
+            "maxItems": max_items,
+            "flattenOutput": True,
+            "proxy": {"useApifyProxy": True, "apifyProxyGroups": ["RESIDENTIAL"]},
+        }
+    domain_input: dict = {
+        "location": suburb_name,
+        "saleType": "buy",
+        "limit": max_items,
+    }
+    if filters.get("price_max") is not None:
+        domain_input["priceMax"] = int(filters["price_max"])
+    return domain_input
+
+
+def _run_apify_search_sync(platform: str, suburb_name: str, filters: dict, max_items: int) -> list[dict]:
+    client = ApifyClient(settings.APIFY_API_TOKEN)
+    actor_id = settings.APIFY_REA_ACTOR_ID if platform == "realestate" else settings.APIFY_DOMAIN_ACTOR_ID
+    run_input = _build_search_input(platform, suburb_name, filters, max_items)
+    logger.info("Starting Apify search run: actor=%s suburb=%s platform=%s", actor_id, suburb_name, platform)
+    run = client.actor(actor_id).call(
+        run_input=run_input,
+        max_items=max_items,
+        timeout_secs=600,
+    )
+    dataset_id = run.get("defaultDatasetId") if run else None
+    if not run or not dataset_id:
+        logger.warning("Apify search run failed (no dataset): suburb=%s platform=%s", suburb_name, platform)
+        return []
+    if run.get("status") == "FAILED":
+        logger.warning("Apify search actor FAILED: suburb=%s platform=%s", suburb_name, platform)
+        return []
+    items = list(client.dataset(dataset_id).iterate_items())
+    logger.info("Apify search returned %d item(s): suburb=%s platform=%s", len(items), suburb_name, platform)
+    return items
+
+
+async def fetch_new_listings_via_apify(
+    platform: str, suburb_name: str, filters: dict, max_items: int
+) -> list[DiscoveredListing]:
+    """Search-mode call — returns many lightweight listing stubs for a suburb,
+    as opposed to fetch_property_via_apify's single-URL detail scrape."""
+    raw_items = await asyncio.to_thread(_run_apify_search_sync, platform, suburb_name, filters, max_items)
+    listings: list[DiscoveredListing] = []
+    for raw in raw_items:
+        listing_id = str(raw.get("id") or raw.get("listingId") or raw.get("propertyId") or "")
+        url = (
+            raw.get("url")
+            or raw.get("listingUrl")
+            or raw.get("propertyUrl")
+            or raw.get("originalSearchUrl")
+            or ""
+        )
+        if not listing_id or not url:
+            continue
+        listing_price, _, price_high, _ = _extract_price(raw)
+        listings.append(DiscoveredListing(
+            url=url,
+            source_listing_id=listing_id,
+            source_platform=platform,
+            price_aud=listing_price or price_high,
+        ))
+    return listings
 
 
 def _extract_price(raw: dict) -> tuple[Optional[int], Optional[int], Optional[int], bool]:

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { toast } from "sonner";
@@ -8,7 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useOnboardingStore } from "@/lib/stores/onboarding";
-import { createFamily, addFamilyMember } from "@/lib/api/families";
+import {
+  createFamily,
+  addFamilyMember,
+  setNonNegotiables,
+  setTargetSuburbs,
+  updateFamily,
+} from "@/lib/api/families";
+import { listSuburbs } from "@/lib/api/suburbs";
+import type { SuburbListItem } from "@/lib/types";
+
+const TOTAL_STEPS = 6;
+const MAX_TARGET_SUBURBS = 5;
 
 const ROLE_OPTIONS = [
   { value: "primary_adult", label: "Primary Adult" },
@@ -42,6 +53,7 @@ export default function OnboardingPage() {
   const { user } = useUser();
   const store = useOnboardingStore();
   const [submitting, setSubmitting] = useState(false);
+  const [suburbs, setSuburbs] = useState<SuburbListItem[]>([]);
 
   const {
     step,
@@ -51,16 +63,32 @@ export default function OnboardingPage() {
     budgetMax,
     moveTimeline,
     nonNegotiables,
+    targetSuburbIds,
     setStep,
     setFamilyName,
     setMembers,
     setBudget,
     setMoveTimeline,
-    setNonNegotiables,
+    setNonNegotiables: setNonNegotiablesLocal,
+    setTargetSuburbIds,
   } = store;
 
   const currentMembers =
     members.length > 0 ? members : [{ name: "", role: "primary_adult", age: "" }];
+
+  useEffect(() => {
+    const token = getToken;
+    (async () => {
+      try {
+        const t = await token();
+        if (!t) return;
+        setSuburbs(await listSuburbs(t));
+      } catch {
+        // Non-critical — the suburb-picker step just shows empty if this fails.
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleNext = () => {
     if (step === 2 && members.length === 0) {
@@ -73,9 +101,21 @@ export default function OnboardingPage() {
 
   const toggleNonNeg = (item: string) => {
     if (nonNegotiables.includes(item)) {
-      setNonNegotiables(nonNegotiables.filter((n) => n !== item));
+      setNonNegotiablesLocal(nonNegotiables.filter((n) => n !== item));
     } else {
-      setNonNegotiables([...nonNegotiables, item]);
+      setNonNegotiablesLocal([...nonNegotiables, item]);
+    }
+  };
+
+  const toggleSuburb = (id: string) => {
+    if (targetSuburbIds.includes(id)) {
+      setTargetSuburbIds(targetSuburbIds.filter((s) => s !== id));
+    } else {
+      if (targetSuburbIds.length >= MAX_TARGET_SUBURBS) {
+        toast.error(`You can pick up to ${MAX_TARGET_SUBURBS} suburbs`);
+        return;
+      }
+      setTargetSuburbIds([...targetSuburbIds, id]);
     }
   };
 
@@ -90,6 +130,8 @@ export default function OnboardingPage() {
           display_name: familyName,
           user_display_name: user?.fullName ?? "User",
           user_email: user?.primaryEmailAddress?.emailAddress ?? "",
+          budget_min_aud: budgetMin ? parseInt(budgetMin) : undefined,
+          budget_max_aud: budgetMax ? parseInt(budgetMax) : undefined,
         },
         token
       );
@@ -108,6 +150,23 @@ export default function OnboardingPage() {
         }
       }
 
+      if (nonNegotiables.length > 0) {
+        await setNonNegotiables(family.id, nonNegotiables, token);
+      }
+
+      if (targetSuburbIds.length > 0) {
+        await setTargetSuburbs(family.id, targetSuburbIds, token);
+      }
+
+      await updateFamily(
+        family.id,
+        {
+          onboarding_completed: true,
+          ...(moveTimeline ? { target_move_timeline: moveTimeline } : {}),
+        },
+        token
+      );
+
       store.reset();
       router.push("/app/dashboard?onboarding=complete");
     } catch {
@@ -117,14 +176,14 @@ export default function OnboardingPage() {
     }
   };
 
-  const progressPct = (step / 5) * 100;
+  const progressPct = (step / TOTAL_STEPS) * 100;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-lg">
         <div className="mb-8">
           <div className="flex justify-between text-xs text-muted-foreground mb-2">
-            <span>Step {step} of 5</span>
+            <span>Step {step} of {TOTAL_STEPS}</span>
             <span>{Math.round(progressPct)}%</span>
           </div>
           <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
@@ -322,6 +381,38 @@ export default function OnboardingPage() {
             </div>
           )}
 
+          {step === 6 && (
+            <div className="space-y-6">
+              <div>
+                <h1 className="text-2xl font-semibold mb-1">Which suburbs interest you?</h1>
+                <p className="text-muted-foreground text-sm">
+                  Pick up to {MAX_TARGET_SUBURBS}. We&apos;ll watch these for new matching listings.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-2 max-h-80 overflow-y-auto">
+                {suburbs.map((suburb) => (
+                  <label
+                    key={suburb.id}
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg border cursor-pointer hover:bg-accent transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={targetSuburbIds.includes(suburb.id)}
+                      onChange={() => toggleSuburb(suburb.id)}
+                      className="h-4 w-4"
+                    />
+                    <span className="text-sm">
+                      {suburb.name} <span className="text-muted-foreground">({suburb.postcode})</span>
+                    </span>
+                  </label>
+                ))}
+                {suburbs.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Loading suburbs...</p>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between mt-8">
             {step > 1 ? (
               <Button variant="outline" onClick={handleBack} disabled={submitting}>
@@ -341,7 +432,7 @@ export default function OnboardingPage() {
                   Skip for now
                 </button>
               )}
-              {step < 5 ? (
+              {step < TOTAL_STEPS ? (
                 <Button
                   onClick={handleNext}
                   disabled={step === 1 && !familyName.trim()}

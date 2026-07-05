@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { toast } from "sonner";
@@ -22,7 +22,7 @@ import { FamilyFitScore } from "@/components/score/FamilyFitScore";
 import { CategoryScoreRow } from "@/components/score/CategoryScoreRow";
 import { ScoreRing } from "@/components/score/ScoreRing";
 import { RecommendationBadge } from "@/components/score/RecommendationBadge";
-import { getProperty, updateProperty } from "@/lib/api/properties";
+import { getProperty, updateProperty, markPropertyViewed } from "@/lib/api/properties";
 import { getEvaluation } from "@/lib/api/evaluations";
 import { createInspection } from "@/lib/api/inspections";
 import { ApiError } from "@/lib/api/client";
@@ -41,8 +41,9 @@ const formatAUD = (price: number | null) => {
 export default function PropertyDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { getToken } = useAuth();
+  const { getToken, isLoaded } = useAuth();
   const propertyId = params.id as string;
+  const viewTrackedRef = useRef(false);
 
   const [property, setProperty] = useState<PropertyResponse | null>(null);
   const [evaluation, setEvaluation] = useState<EvaluationResponse | null>(null);
@@ -61,6 +62,25 @@ export default function PropertyDetailPage() {
       document.title = `${property.address_street} | GC Move OS`;
     }
   }, [property]);
+
+  useEffect(() => {
+    if (!isLoaded || !property || viewTrackedRef.current) return;
+    if (!property.auto_discovered || property.viewed_at) return;
+    viewTrackedRef.current = true;
+    let cancelled = false;
+    async function trackView() {
+      try {
+        const token = await getToken();
+        if (!token || cancelled) return;
+        const updated = await markPropertyViewed(propertyId, token);
+        if (!cancelled) setProperty(updated);
+      } catch {
+        // Non-critical — ignore failures silently.
+      }
+    }
+    trackView();
+    return () => { cancelled = true; };
+  }, [isLoaded, property, propertyId, getToken]);
 
   useEffect(() => {
     let cancelled = false;

@@ -59,6 +59,8 @@ class PropertyResponse(BaseModel):
     is_favourite: bool
     family_notes: Optional[str]
     created_at: datetime
+    auto_discovered: bool
+    viewed_at: Optional[datetime]
     features: list[PropertyFeatureResponse] = []
     images: list[PropertyImageResponse] = []
 
@@ -77,6 +79,8 @@ class PropertyListResponse(BaseModel):
     status: str
     is_favourite: bool
     created_at: datetime
+    auto_discovered: bool
+    viewed_at: Optional[datetime]
 
 
 class PropertyIngestResponse(BaseModel):

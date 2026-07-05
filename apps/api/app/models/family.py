@@ -18,6 +18,7 @@ class Family(TimestampMixin, Base):
     budget_min_aud = Column(Integer)
     budget_max_aud = Column(Integer)
     target_move_date = Column(Date)
+    target_move_timeline = Column(Text)
     is_active = Column(Boolean, nullable=False, default=True)
     onboarding_completed = Column(Boolean, nullable=False, default=False)
     scoring_model_version = Column(Text, nullable=False, default="v1")
@@ -39,6 +40,13 @@ class Family(TimestampMixin, Base):
     invites = relationship("FamilyInvite", back_populates="family")
     preferences = relationship("FamilyPreference", back_populates="family")
     memory = relationship("FamilyMemory", back_populates="family")
+    target_suburbs = relationship("FamilySuburb", back_populates="family")
+    non_negotiables = relationship(
+        "FamilyNonNegotiable",
+        back_populates="family",
+        primaryjoin="and_(Family.id==FamilyNonNegotiable.family_id, FamilyNonNegotiable.deleted_at==None)",
+        viewonly=True,
+    )
 
 
 class FamilyUser(TimestampMixin, Base):
@@ -125,6 +133,36 @@ class FamilyPreference(TimestampMixin, Base):
     )
 
     family = relationship("Family", back_populates="preferences")
+
+
+class FamilySuburb(TimestampMixin, Base):
+    __tablename__ = "family_suburbs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    family_id = Column(UUID(as_uuid=True), ForeignKey("families.id", ondelete="RESTRICT"), nullable=False)
+    suburb_id = Column(UUID(as_uuid=True), ForeignKey("suburbs.id"), nullable=False)
+
+    family = relationship("Family", back_populates="target_suburbs")
+    suburb = relationship("Suburb")
+
+
+class FamilyNonNegotiable(TimestampMixin, Base):
+    __tablename__ = "family_non_negotiables"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    family_id = Column(UUID(as_uuid=True), ForeignKey("families.id", ondelete="RESTRICT"), nullable=False)
+    criterion_key = Column(Text, nullable=False)
+    comparator = Column(Text, nullable=False)
+    value = Column(Text, nullable=False)
+    label = Column(Text)
+    source = Column(Text, nullable=False, default="onboarding")
+
+    __table_args__ = (
+        CheckConstraint("comparator IN ('eq', 'gte', 'lte', 'has')", name="family_non_negotiables_comparator_check"),
+        CheckConstraint("source IN ('onboarding', 'settings', 'manual')", name="family_non_negotiables_source_check"),
+    )
+
+    family = relationship("Family", back_populates="non_negotiables")
 
 
 class FamilyMemory(TimestampMixin, Base):

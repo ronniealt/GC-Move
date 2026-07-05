@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     APIFY_REA_ACTOR_ID: str = ""
     APIFY_DOMAIN_ACTOR_ID: str = ""
 
+    DISCOVERY_APIFY_MAX_USD_PER_CALL: float = 2.0
+    DISCOVERY_APIFY_MAX_USD_PER_RUN: float = 20.0
+    DISCOVERY_MAX_NEW_PER_FAMILY_RUN: int = 10
+    DISCOVERY_SEARCH_MAX_ITEMS: int = 50
+
     CORS_ORIGINS: str = "http://localhost:3000"
     LOG_LEVEL: str = "INFO"
 

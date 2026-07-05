@@ -128,6 +128,8 @@ async def get_dashboard(
                 suburb_tier=prop.suburb.tier if prop.suburb else None,
                 scores=scores_response,
                 hero_image_url=hero_image,
+                auto_discovered=prop.auto_discovered,
+                viewed_at=prop.viewed_at,
             ))
 
     # Upcoming inspections (next 2 scheduled)

@@ -22,6 +22,8 @@ class TopPropertyItem(BaseModel):
     suburb_tier: Optional[str]
     scores: Optional[EvaluationScoresResponse]
     hero_image_url: Optional[str]
+    auto_discovered: bool
+    viewed_at: Optional[datetime]
 
 
 class UpcomingInspectionItem(BaseModel):

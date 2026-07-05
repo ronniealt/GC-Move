@@ -1,5 +1,6 @@
 import re
 import uuid as _uuid
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -79,6 +80,7 @@ async def list_properties(
     family: Family = Depends(get_current_family),
     db: AsyncSession = Depends(get_db),
     status_filter: Optional[str] = None,
+    discovered_only: bool = False,
 ) -> list[PropertyListResponse]:
     query = select(Property).where(
         Property.family_id == family.id,
@@ -86,6 +88,8 @@ async def list_properties(
     )
     if status_filter:
         query = query.where(Property.status == status_filter)
+    if discovered_only:
+        query = query.where(Property.auto_discovered == True)  # noqa: E712
     query = query.order_by(Property.created_at.desc())
 
     result = await db.execute(query)
@@ -119,6 +123,41 @@ async def get_property(
     prop = result.scalar_one_or_none()
     if prop is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return PropertyResponse.model_validate(prop)
+
+
+@router.post("/{property_id}/view", response_model=PropertyResponse)
+async def mark_property_viewed(
+    property_id: str,
+    family: Family = Depends(get_current_family),
+    db: AsyncSession = Depends(get_db),
+) -> PropertyResponse:
+    try:
+        pid = _uuid.UUID(property_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    result = await db.execute(
+        select(Property)
+        .where(
+            Property.id == pid,
+            Property.family_id == family.id,
+            Property.deleted_at.is_(None),
+        )
+        .options(
+            selectinload(Property.features),
+            selectinload(Property.images),
+        )
+    )
+    prop = result.scalar_one_or_none()
+    if prop is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    if prop.viewed_at is None:
+        prop.viewed_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(prop)
+
     return PropertyResponse.model_validate(prop)
 
 

@@ -18,9 +18,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { getMyFamily } from "@/lib/api/families";
+import {
+  getMyFamily,
+  getNotificationSettings,
+  updateNotificationSettings,
+} from "@/lib/api/families";
 import { apiCall } from "@/lib/api/client";
-import type { FamilyResponse } from "@/lib/types";
+import type { FamilyResponse, NotificationSettingsResponse } from "@/lib/types";
 
 const WEIGHT_LABELS: Record<string, string> = {
   weight_community: "Community",
@@ -45,6 +49,9 @@ export default function SettingsPage() {
 
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
 
+  const [notifSettings, setNotifSettings] = useState<NotificationSettingsResponse | null>(null);
+  const [savingNotif, setSavingNotif] = useState(false);
+
   useEffect(() => {
     document.title = "Settings | GC Move OS";
   }, []);
@@ -61,6 +68,8 @@ export default function SettingsPage() {
           setFamily(fam);
           setDisplayName(fam.display_name);
         }
+        const notif = await getNotificationSettings(fam.id, token);
+        if (!cancelled) setNotifSettings(notif);
       } catch {
         toast.error("Failed to load family settings.");
       } finally {
@@ -70,6 +79,44 @@ export default function SettingsPage() {
     load();
     return () => { cancelled = true; };
   }, [getToken, isLoaded]);
+
+  async function handleToggleDigest(checked: boolean) {
+    if (!family || !notifSettings) return;
+    setSavingNotif(true);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("Not authenticated");
+      const updated = await updateNotificationSettings(
+        family.id,
+        { email_daily_digest: checked },
+        token
+      );
+      setNotifSettings(updated);
+    } catch {
+      toast.error("Failed to update notification settings.");
+    } finally {
+      setSavingNotif(false);
+    }
+  }
+
+  async function handleDigestTimeChange(value: string) {
+    if (!family || !notifSettings) return;
+    setSavingNotif(true);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("Not authenticated");
+      const updated = await updateNotificationSettings(
+        family.id,
+        { digest_time: `${value}:00` },
+        token
+      );
+      setNotifSettings(updated);
+    } catch {
+      toast.error("Failed to update digest time.");
+    } finally {
+      setSavingNotif(false);
+    }
+  }
 
   async function handleSaveName() {
     if (!family || !displayName.trim()) return;
@@ -213,6 +260,43 @@ export default function SettingsPage() {
               );
             })}
           </div>
+        )}
+      </Card>
+
+      {/* Notifications */}
+      <Card className="p-5 space-y-4">
+        <h2 className="text-base font-semibold">Notifications</h2>
+        {notifSettings && (
+          <>
+            <label className="flex items-center justify-between gap-3 cursor-pointer">
+              <div>
+                <p className="text-sm font-medium">Daily Brief email</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  A daily summary of new recommendations for your family.
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={notifSettings.email_daily_digest}
+                disabled={savingNotif}
+                onChange={(e) => handleToggleDigest(e.target.checked)}
+              />
+            </label>
+            {notifSettings.email_daily_digest && (
+              <div className="flex items-center gap-3">
+                <Label htmlFor="digest-time" className="text-sm">Send at</Label>
+                <Input
+                  id="digest-time"
+                  type="time"
+                  className="w-32"
+                  disabled={savingNotif}
+                  value={(notifSettings.digest_time ?? "07:00:00").slice(0, 5)}
+                  onChange={(e) => handleDigestTimeChange(e.target.value)}
+                />
+              </div>
+            )}
+          </>
         )}
       </Card>
 

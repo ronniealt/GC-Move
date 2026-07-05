@@ -2,7 +2,9 @@
 
 ## Working Style
 
-**Claude instructs, Ronnie implements.** Claude must never directly edit code files. Instead, provide clear instructions: which file to open, what to change, and the exact replacement text. Ronnie makes all edits himself.
+**This rule applies to Claude Desktop only.** In Claude Code CLI sessions, Claude edits files directly as normal — no instruct-only mode needed.
+
+**Claude Desktop: Claude instructs, Ronnie implements.** Claude must never directly edit code files. Instead, provide clear instructions: which file to open, what to change, and the exact replacement text. Ronnie makes all edits himself.
 
 ---
 
@@ -248,6 +250,19 @@ Confirmed Apify actor IDs:
 - Domain: `fatihtahta/domain-com-au-scraper`
 
 Next feature backlog is tracked in `FEATURES.md`.
+
+---
+
+## Scheduled Jobs (Railway Cron)
+
+Auto-discovery and the Daily Brief email are plain Python modules under `apps/api/app/jobs/`, runnable identically by a developer and by Railway Cron — no in-process scheduler or task queue. Each needs its own Railway Cron Job service (a service pointed at this repo/Dockerfile with a custom start command and a cron schedule), created manually in the Railway dashboard — no `railway.json`/`railway.toml` exists yet to declare these as code, and no `railway` CLI is authenticated on any machine that's touched this repo so far.
+
+| Job | Command | Suggested schedule |
+|---|---|---|
+| Auto-discovery | `python -m app.jobs.discovery_job` | Every 6 hours |
+| Daily Brief email | `python -m app.jobs.daily_brief_job` | Hourly (`0 * * * *`) — the job itself gates on each family's `digest_time`, so hourly is correct, not wasteful |
+
+Both accept `--family-id=<uuid>` and `--dry-run` for local testing without affecting real data/sends; the Daily Brief job also accepts `--force` to bypass its digest-time/idempotency gate. Run them from `apps/api` with the local venv: `.venv/bin/python -m app.jobs.discovery_job --dry-run`.
 
 ---
 

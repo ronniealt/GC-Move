@@ -83,6 +83,7 @@ class NotificationSettings(TimestampMixin, Base):
     email_inspection_reminder = Column(Boolean, nullable=False, default=True)
     push_enabled = Column(Boolean, nullable=False, default=False)
     digest_time = Column(Time, default="07:00:00")
+    last_digest_sent_at = Column(DateTime(timezone=True))
 
 
 class MarketSnapshot(Base):

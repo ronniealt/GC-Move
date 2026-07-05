@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr
@@ -19,6 +19,8 @@ class FamilyUpdate(BaseModel):
     budget_min_aud: Optional[int] = None
     budget_max_aud: Optional[int] = None
     target_move_date: Optional[date] = None
+    target_move_timeline: Optional[str] = None
+    onboarding_completed: Optional[bool] = None
     weight_community: Optional[float] = None
     weight_lifestyle: Optional[float] = None
     weight_school: Optional[float] = None
@@ -35,6 +37,7 @@ class FamilyResponse(BaseModel):
     budget_min_aud: Optional[int]
     budget_max_aud: Optional[int]
     target_move_date: Optional[date]
+    target_move_timeline: Optional[str]
     is_active: bool
     onboarding_completed: bool
     scoring_model_version: str
@@ -44,6 +47,48 @@ class FamilyResponse(BaseModel):
     weight_property: float
     weight_financial: float
     created_at: datetime
+
+
+class NonNegotiablesSetRequest(BaseModel):
+    labels: list[str]
+
+
+class FamilyNonNegotiableResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    criterion_key: str
+    comparator: str
+    value: str
+    label: Optional[str]
+    source: str
+
+
+class SuburbTargetsSetRequest(BaseModel):
+    suburb_ids: list[UUID]
+
+
+class FamilySuburbsResponse(BaseModel):
+    suburb_ids: list[UUID]
+
+
+class NotificationSettingsUpdate(BaseModel):
+    email_new_evaluation: Optional[bool] = None
+    email_rank_change: Optional[bool] = None
+    email_daily_digest: Optional[bool] = None
+    email_inspection_reminder: Optional[bool] = None
+    push_enabled: Optional[bool] = None
+    digest_time: Optional[time] = None
+
+
+class NotificationSettingsResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    email_new_evaluation: bool
+    email_rank_change: bool
+    email_daily_digest: bool
+    email_inspection_reminder: bool
+    push_enabled: bool
+    digest_time: Optional[time]
 
 
 class FamilyMemberCreate(BaseModel):

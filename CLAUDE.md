@@ -151,6 +151,8 @@ A feature is complete when:
 
 ## Build Status
 
+**v1.2.0 — Auto-discovery, Daily Brief, and direct preference controls (2026-07-05)**
+
 **v1.1.0 — Post-launch fixes and product improvements (2026-06-23)**
 
 | Phase | Status | Notes |
@@ -163,6 +165,20 @@ A feature is complete when:
 | Phase 5 — AI Advisor | ✅ Complete | POST /api/advisor/chat + GET /api/advisor/history; family context injection; GPT-4o with 30s timeout + fallback; full chat UI with thread history, thinking indicator, property context banner, suggested prompts |
 | Phase 6 — Intelligence features | ✅ Complete | Suburb list + detail, school comparison, preference profile, decision journal — backend routers + frontend pages |
 | Phase 7 — Polish | ✅ Complete | Inspection tracker (CRUD), dashboard populated (top recs + upcoming inspections), settings page (name/invite/weights/danger zone), PostHog tracking (6 events), ErrorBoundary, active nav state, route loading spinner |
+
+## v1.2.0 Changes (2026-07-05)
+
+| Change | Files |
+|---|---|
+| **Auto-discovery**: `discovery_job.py` polls REA/Domain by target suburb, dedups against existing listings, and hands new ones to the existing ingest/scoring pipeline unchanged | `apps/api/app/jobs/discovery_job.py` (new), `apps/api/app/services/apify_scraper.py` (search-mode functions added) |
+| **Daily Brief email**: opt-in digest of top new recommendations, gated on each family's `digest_time`, idempotent | `apps/api/app/jobs/daily_brief_job.py` (new), `apps/api/app/services/email.py` (new, shared Resend helper) |
+| Families can target up to 7 suburbs and set structured non-negotiables (was one hardcoded rule set) | Migration 011, `apps/api/app/models/family.py`, `apps/api/app/services/non_negotiables.py` |
+| Per-family dedup — same listing can no longer be ingested twice | Migration 012 (`ux_properties_family_source_listing`) |
+| **Preferences page rebuilt** — direct budget/suburbs/non-negotiables/property-type controls, replacing the AI-inferred-only view | `apps/web/app/app/preferences/page.tsx` |
+| Properties page: Matched/Rejected tabs, "New" (auto-discovered) badge | `apps/web/app/app/properties/page.tsx` |
+| Onboarding now actually sends budget/timeline/non-negotiables/suburbs to the backend (previously silently dropped) | `apps/web/app/onboarding/page.tsx` |
+| Fix: `apify-client==1.7.1` defaulted every run to a near-zero charge limit with no way to override it — every Apify detail-scrape was silently failing. Bumped to `1.12.2` | `apps/api/pyproject.toml`, `apps/api/app/services/apify_scraper.py` |
+| Fix: garage count arrives from Apify as structured data (`"garage:_2"`), not descriptive phrases — was wrongly rejecting real double-garage listings | `apps/api/app/services/non_negotiables.py` |
 
 ## Post-Launch Fixes (v1.1.0 — 2026-06-23)
 

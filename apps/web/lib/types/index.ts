@@ -63,6 +63,7 @@ export interface FamilyUpdate {
 
 export interface NonNegotiablesSetRequest {
   labels: string[];
+  property_type?: string;
 }
 
 export interface FamilyNonNegotiableResponse {

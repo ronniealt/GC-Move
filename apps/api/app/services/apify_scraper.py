@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from decimal import Decimal
 from typing import Optional
 
 from apify_client import ApifyClient
@@ -58,6 +59,7 @@ def _run_apify_sync(url: str) -> dict:
             "proxy": {"useApifyProxy": True, "apifyProxyGroups": ["RESIDENTIAL"]},
         },
         max_items=1,
+        max_total_charge_usd=Decimal(str(settings.APIFY_DETAIL_MAX_USD_PER_CALL)),
         timeout_secs=600,
     )
     dataset_id = run.get("defaultDatasetId") if run else None
@@ -118,6 +120,7 @@ def _run_apify_search_sync(platform: str, suburb_name: str, filters: dict, max_i
     run = client.actor(actor_id).call(
         run_input=run_input,
         max_items=max_items,
+        max_total_charge_usd=Decimal(str(settings.DISCOVERY_APIFY_MAX_USD_PER_CALL)),
         timeout_secs=600,
     )
     dataset_id = run.get("defaultDatasetId") if run else None

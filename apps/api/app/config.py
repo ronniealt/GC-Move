@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     APIFY_REA_ACTOR_ID: str = ""
     APIFY_DOMAIN_ACTOR_ID: str = ""
 
+    APIFY_DETAIL_MAX_USD_PER_CALL: float = 0.50
     DISCOVERY_APIFY_MAX_USD_PER_CALL: float = 2.0
     DISCOVERY_APIFY_MAX_USD_PER_RUN: float = 20.0
     DISCOVERY_MAX_NEW_PER_FAMILY_RUN: int = 10

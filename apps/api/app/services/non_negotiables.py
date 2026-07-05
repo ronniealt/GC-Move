@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from typing import Optional
 
@@ -24,6 +25,20 @@ _DRIVE_TIME_FEATURE_KEY = {
     "max_beach_drive_minutes": "beach_drive_minutes",
     "max_burleigh_drive_minutes": "burleigh_drive_minutes",
 }
+
+
+def _max_structured_count(feature_keys: set, prefix: str) -> Optional[int]:
+    """Apify features often arrive as structured slugs like 'garage:_2' (from
+    'Garage: 2') rather than a descriptive phrase — extract the numeric count
+    for a given prefix (e.g. 'garage', 'carport') if present."""
+    best = None
+    pattern = re.compile(rf"^{re.escape(prefix)}:?_*(\d+)$")
+    for fk in feature_keys:
+        m = pattern.match(fk)
+        if m:
+            count = int(m.group(1))
+            best = count if best is None else max(best, count)
+    return best
 
 
 def check_non_negotiables(
@@ -93,6 +108,21 @@ def _evaluate_criterion(
                 failure_reason=f"Has {have} bedrooms, needs {required}+",
             )
         return None
+
+    if key == "has_double_garage":
+        garage_count = _max_structured_count(feature_keys, "garage")
+        if garage_count is not None and garage_count >= 2:
+            return None
+        keywords = _HAS_KEYWORDS[key]
+        in_features = any(any(kw in fk for kw in keywords) for fk in feature_keys)
+        in_description = any(kw in description for kw in keywords)
+        if in_features or in_description:
+            return None
+        return NonNegotiableResult(
+            passed=False,
+            failure_key=key,
+            failure_reason=f"No {criterion.label or key} detected in property features or description",
+        )
 
     if key in _HAS_KEYWORDS:
         keywords = _HAS_KEYWORDS[key]

@@ -16,10 +16,10 @@ import {
   updateFamily,
 } from "@/lib/api/families";
 import { listSuburbs } from "@/lib/api/suburbs";
+import { MAX_TARGET_SUBURBS } from "@/lib/constants";
 import type { SuburbListItem } from "@/lib/types";
 
 const TOTAL_STEPS = 6;
-const MAX_TARGET_SUBURBS = 5;
 
 const ROLE_OPTIONS = [
   { value: "primary_adult", label: "Primary Adult" },

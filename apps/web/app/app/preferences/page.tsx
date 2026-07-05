@@ -1,67 +1,46 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { X, Check } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { listPreferences, updatePreference, retirePreference } from "@/lib/api/preferences";
-import type { PreferenceResponse } from "@/lib/types";
-
-type ConfidenceLevel = "High" | "Medium" | "Inferred";
-
-function confidenceLevel(confidence: number): ConfidenceLevel {
-  if (confidence >= 0.75) return "High";
-  if (confidence >= 0.4) return "Medium";
-  return "Inferred";
-}
-
-const CONFIDENCE_COLORS: Record<ConfidenceLevel, string> = {
-  High: "bg-green-100 text-green-700 border-green-200",
-  Medium: "bg-amber-100 text-amber-700 border-amber-200",
-  Inferred: "bg-slate-100 text-slate-500 border-slate-200",
-};
-
-interface PreferenceTagProps {
-  pref: PreferenceResponse;
-  onConfirm: (id: string) => void;
-  onRetire: (id: string) => void;
-}
-
-function PreferenceTag({ pref, onConfirm, onRetire }: PreferenceTagProps) {
-  const level = confidenceLevel(pref.confidence);
-  const colorClass = CONFIDENCE_COLORS[level];
-
-  return (
-    <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm ${colorClass}`}>
-      {pref.is_deal_breaker && <span className="text-red-500 font-bold">!</span>}
-      <span>{pref.attribute}</span>
-      <span className="opacity-60 text-xs">{level}</span>
-      {pref.status === "Emerging" && (
-        <button
-          onClick={() => onConfirm(pref.id)}
-          className="ml-1 hover:opacity-80 transition-opacity"
-          title="Confirm preference"
-        >
-          <Check size={12} />
-        </button>
-      )}
-      <button
-        onClick={() => onRetire(pref.id)}
-        className="ml-0.5 hover:opacity-80 transition-opacity"
-        title="Remove preference"
-      >
-        <X size={12} />
-      </button>
-    </div>
-  );
-}
+import {
+  getMyFamily,
+  updateFamily,
+  getTargetSuburbs,
+  setTargetSuburbs,
+  getNonNegotiables,
+  setNonNegotiables,
+} from "@/lib/api/families";
+import { listSuburbs } from "@/lib/api/suburbs";
+import { NON_NEGOTIABLE_OPTIONS, MAX_TARGET_SUBURBS, PROPERTY_TYPE_OPTIONS } from "@/lib/constants";
+import type { FamilyResponse, SuburbListItem } from "@/lib/types";
 
 export default function PreferencesPage() {
   const { getToken, isLoaded } = useAuth();
-  const [preferences, setPreferences] = useState<PreferenceResponse[]>([]);
+
+  const [family, setFamily] = useState<FamilyResponse | null>(null);
+  const [suburbs, setSuburbs] = useState<SuburbListItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [budgetMin, setBudgetMin] = useState("");
+  const [budgetMax, setBudgetMax] = useState("");
+  const [savingBudget, setSavingBudget] = useState(false);
+
+  const [selectedSuburbIds, setSelectedSuburbIds] = useState<string[]>([]);
+  const [savingSuburbs, setSavingSuburbs] = useState(false);
+
+  const [selectedNonNegotiables, setSelectedNonNegotiables] = useState<string[]>([]);
+  const [propertyType, setPropertyType] = useState("any");
+  const [savingNonNegotiables, setSavingNonNegotiables] = useState(false);
+
+  useEffect(() => {
+    document.title = "Preferences | GC Move OS";
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,8 +49,29 @@ export default function PreferencesPage() {
       const token = await getToken();
       if (!token || cancelled) return;
       try {
-        const data = await listPreferences(token);
-        if (!cancelled) setPreferences(data);
+        const [fam, suburbList] = await Promise.all([getMyFamily(token), listSuburbs(token)]);
+        if (cancelled) return;
+        setFamily(fam);
+        setBudgetMin(fam.budget_min_aud?.toString() ?? "");
+        setBudgetMax(fam.budget_max_aud?.toString() ?? "");
+        setSuburbs(suburbList);
+
+        const [targets, nonNegs] = await Promise.all([
+          getTargetSuburbs(fam.id, token),
+          getNonNegotiables(fam.id, token),
+        ]);
+        if (cancelled) return;
+        setSelectedSuburbIds(targets.suburb_ids);
+        setSelectedNonNegotiables(
+          nonNegs
+            .filter((n) => n.criterion_key !== "property_type")
+            .map((n) => n.label)
+            .filter((l): l is string => !!l)
+        );
+        const propertyTypeRow = nonNegs.find((n) => n.criterion_key === "property_type");
+        setPropertyType(propertyTypeRow?.value ?? "any");
+      } catch {
+        toast.error("Failed to load preferences.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -80,142 +80,226 @@ export default function PreferencesPage() {
     return () => { cancelled = true; };
   }, [getToken, isLoaded]);
 
-  const handleConfirm = async (id: string) => {
-    const token = await getToken();
-    if (!token) return;
-    const updated = await updatePreference(id, { status: "Confirmed" }, token);
-    setPreferences((prev) => prev.map((p) => (p.id === id ? updated : p)));
-  };
+  async function handleSaveBudget() {
+    if (!family) return;
+    setSavingBudget(true);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("Not authenticated");
+      const updated = await updateFamily(
+        family.id,
+        {
+          budget_min_aud: budgetMin ? parseInt(budgetMin) : undefined,
+          budget_max_aud: budgetMax ? parseInt(budgetMax) : undefined,
+        },
+        token
+      );
+      setFamily(updated);
+      toast.success("Budget updated.");
+    } catch {
+      toast.error("Failed to update budget.");
+    } finally {
+      setSavingBudget(false);
+    }
+  }
 
-  const handleRetire = async (id: string) => {
-    const token = await getToken();
-    if (!token) return;
-    await retirePreference(id, token);
-    setPreferences((prev) => prev.filter((p) => p.id !== id));
-  };
+  function toggleSuburb(id: string) {
+    if (selectedSuburbIds.includes(id)) {
+      setSelectedSuburbIds(selectedSuburbIds.filter((s) => s !== id));
+    } else {
+      if (selectedSuburbIds.length >= MAX_TARGET_SUBURBS) {
+        toast.error(`You can pick up to ${MAX_TARGET_SUBURBS} suburbs`);
+        return;
+      }
+      setSelectedSuburbIds([...selectedSuburbIds, id]);
+    }
+  }
 
-  const byStatus = {
-    dealBreakers: preferences.filter((p) => p.is_deal_breaker),
-    confirmed: preferences.filter((p) => p.status === "Confirmed" && !p.is_deal_breaker),
-    emerging: preferences.filter((p) => p.status === "Emerging"),
-    negative: preferences.filter((p) =>
-      p.negative_signal_count > p.positive_signal_count
-    ),
-  };
+  async function handleSaveSuburbs() {
+    if (!family) return;
+    setSavingSuburbs(true);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("Not authenticated");
+      await setTargetSuburbs(family.id, selectedSuburbIds, token);
+      toast.success("Target suburbs updated.");
+    } catch {
+      toast.error("Failed to update target suburbs.");
+    } finally {
+      setSavingSuburbs(false);
+    }
+  }
 
-  const byCategory = preferences
-    .filter((p) => !p.is_deal_breaker && p.status !== "Contradicted")
-    .reduce<Record<string, PreferenceResponse[]>>((acc, p) => {
-      acc[p.category] = acc[p.category] ?? [];
-      acc[p.category].push(p);
-      return acc;
-    }, {});
+  function toggleNonNegotiable(item: string) {
+    if (selectedNonNegotiables.includes(item)) {
+      setSelectedNonNegotiables(selectedNonNegotiables.filter((n) => n !== item));
+    } else {
+      setSelectedNonNegotiables([...selectedNonNegotiables, item]);
+    }
+  }
 
-  const isEmpty = preferences.length === 0;
+  async function handleSaveNonNegotiables() {
+    if (!family) return;
+    setSavingNonNegotiables(true);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("Not authenticated");
+      await setNonNegotiables(family.id, selectedNonNegotiables, token, propertyType);
+      toast.success("Non-negotiables updated.");
+    } catch {
+      toast.error("Failed to update non-negotiables.");
+    } finally {
+      setSavingNonNegotiables(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="p-8 max-w-2xl mx-auto space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-36 rounded-xl" />
+        <Skeleton className="h-36 rounded-xl" />
+        <Skeleton className="h-36 rounded-xl" />
+      </div>
+    );
+  }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-6">
+    <div className="p-8 max-w-2xl mx-auto space-y-8">
       <div>
-        <h1 className="text-3xl font-semibold">Preference Profile</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          What your AI advisor has learned about your family
+        <h1 className="text-2xl font-semibold">Preferences</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Tell us exactly what matters — budget, suburbs, and must-haves.
         </p>
       </div>
 
-      {loading ? (
-        <div className="space-y-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 rounded-lg" />
+      {/* Budget */}
+      <Card className="p-5 space-y-4">
+        <h2 className="text-base font-semibold">Budget</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="budget-min">Minimum (AUD)</Label>
+            <Input
+              id="budget-min"
+              type="number"
+              placeholder="e.g. 1000000"
+              value={budgetMin}
+              onChange={(e) => setBudgetMin(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="budget-max">Maximum (AUD)</Label>
+            <Input
+              id="budget-max"
+              type="number"
+              placeholder="e.g. 2000000"
+              value={budgetMax}
+              onChange={(e) => setBudgetMax(e.target.value)}
+            />
+          </div>
+        </div>
+        <Button
+          onClick={handleSaveBudget}
+          disabled={savingBudget}
+          style={{ backgroundColor: "#4A9B8E" }}
+          className="text-white"
+        >
+          {savingBudget ? "Saving..." : "Save Budget"}
+        </Button>
+      </Card>
+
+      {/* Target Suburbs */}
+      <Card className="p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">Target Suburbs</h2>
+          <span className="text-xs text-muted-foreground">
+            {selectedSuburbIds.length} / {MAX_TARGET_SUBURBS} selected
+          </span>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Pick up to {MAX_TARGET_SUBURBS}. We&apos;ll watch these for new matching listings.
+        </p>
+        <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto">
+          {suburbs.map((suburb) => (
+            <label
+              key={suburb.id}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg border cursor-pointer hover:bg-accent transition-colors"
+            >
+              <input
+                type="checkbox"
+                checked={selectedSuburbIds.includes(suburb.id)}
+                onChange={() => toggleSuburb(suburb.id)}
+                className="h-4 w-4"
+              />
+              <span className="text-sm">
+                {suburb.name} <span className="text-muted-foreground">({suburb.postcode})</span>
+              </span>
+            </label>
           ))}
         </div>
-      ) : isEmpty ? (
-        <Card>
-          <CardContent className="py-12 text-center space-y-2">
-            <p className="text-muted-foreground">
-              Your preference profile is just getting started.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              As you evaluate properties and chat with your advisor, we&apos;ll build a detailed picture of what matters to your family.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          {/* Non-negotiables */}
-          {byStatus.dealBreakers.length > 0 && (
-            <Card className="border-red-200">
-              <CardHeader>
-                <CardTitle className="text-base text-red-600">Non-Negotiables</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                {byStatus.dealBreakers.map((p) => (
-                  <PreferenceTag key={p.id} pref={p} onConfirm={handleConfirm} onRetire={handleRetire} />
-                ))}
-              </CardContent>
-            </Card>
-          )}
+        <Button
+          onClick={handleSaveSuburbs}
+          disabled={savingSuburbs}
+          style={{ backgroundColor: "#4A9B8E" }}
+          className="text-white"
+        >
+          {savingSuburbs ? "Saving..." : "Save Suburbs"}
+        </Button>
+      </Card>
 
-          {/* Confirmed */}
-          {byStatus.confirmed.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Confirmed Preferences</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                {byStatus.confirmed.map((p) => (
-                  <PreferenceTag key={p.id} pref={p} onConfirm={handleConfirm} onRetire={handleRetire} />
-                ))}
-              </CardContent>
-            </Card>
-          )}
+      {/* Non-Negotiables */}
+      <Card className="p-5 space-y-4">
+        <h2 className="text-base font-semibold">Must-Haves</h2>
+        <p className="text-sm text-muted-foreground">
+          Properties missing these will be flagged or filtered out.
+        </p>
 
-          {/* Emerging */}
-          {byStatus.emerging.length > 0 && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Emerging Preferences</CardTitle>
-                  <span className="text-xs text-muted-foreground">Tick to confirm · X to dismiss</span>
-                </div>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                {byStatus.emerging.map((p) => (
-                  <PreferenceTag key={p.id} pref={p} onConfirm={handleConfirm} onRetire={handleRetire} />
-                ))}
-              </CardContent>
-            </Card>
-          )}
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Property Type</p>
+          <div className="grid grid-cols-1 gap-2">
+            {PROPERTY_TYPE_OPTIONS.map((opt) => (
+              <label
+                key={opt.value}
+                className="flex items-center gap-3 px-4 py-3 rounded-lg border cursor-pointer hover:bg-accent transition-colors"
+              >
+                <input
+                  type="radio"
+                  name="property-type"
+                  checked={propertyType === opt.value}
+                  onChange={() => setPropertyType(opt.value)}
+                  className="h-4 w-4"
+                />
+                <span className="text-sm">{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
 
-          {/* By category */}
-          {Object.entries(byCategory).map(([category, prefs]) => (
-            <Card key={category}>
-              <CardHeader>
-                <CardTitle className="text-base capitalize">{category.replace(/_/g, " ")}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {prefs.map((p) => (
-                    <PreferenceTag key={p.id} pref={p} onConfirm={handleConfirm} onRetire={handleRetire} />
-                  ))}
-                </div>
-                {/* Weight bar */}
-                <div className="mt-4">
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>Weight</span>
-                    <span>{(prefs.reduce((a, p) => a + p.current_weight, 0) / prefs.length).toFixed(1)} / 5</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full bg-teal-500 rounded-full"
-                      style={{ width: `${(prefs.reduce((a, p) => a + p.current_weight, 0) / prefs.length / 5) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="grid grid-cols-1 gap-2">
+          {NON_NEGOTIABLE_OPTIONS.map((item) => (
+            <label
+              key={item}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg border cursor-pointer hover:bg-accent transition-colors"
+            >
+              <input
+                type="checkbox"
+                checked={selectedNonNegotiables.includes(item)}
+                onChange={() => toggleNonNegotiable(item)}
+                className="h-4 w-4"
+              />
+              <span className="text-sm">{item}</span>
+            </label>
           ))}
-        </>
-      )}
+        </div>
+        <Button
+          onClick={handleSaveNonNegotiables}
+          disabled={savingNonNegotiables}
+          style={{ backgroundColor: "#4A9B8E" }}
+          className="text-white"
+        >
+          {savingNonNegotiables ? "Saving..." : "Save Must-Haves"}
+        </Button>
+      </Card>
     </div>
   );
 }

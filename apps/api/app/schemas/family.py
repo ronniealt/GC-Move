@@ -51,6 +51,7 @@ class FamilyResponse(BaseModel):
 
 class NonNegotiablesSetRequest(BaseModel):
     labels: list[str]
+    property_type: Optional[str] = None  # "house" | "townhouse" | "unit" | "acreage" | "any" | None
 
 
 class FamilyNonNegotiableResponse(BaseModel):

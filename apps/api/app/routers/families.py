@@ -47,7 +47,9 @@ BUDGET_LABEL_CEILING_AUD: dict[str, int] = {
     "Under $1.5M": 1_500_000,
 }
 
-MAX_TARGET_SUBURBS = 5
+MAX_TARGET_SUBURBS = 7
+
+VALID_PROPERTY_TYPES = {"house", "townhouse", "unit", "acreage"}
 
 router = APIRouter(prefix="/api/families", tags=["families"])
 
@@ -318,6 +320,16 @@ async def set_non_negotiables(
     if tightest_ceiling is not None:
         if family.budget_max_aud is None or tightest_ceiling < family.budget_max_aud:
             family.budget_max_aud = tightest_ceiling
+
+    if body.property_type and body.property_type in VALID_PROPERTY_TYPES:
+        db.add(FamilyNonNegotiable(
+            family_id=family.id,
+            criterion_key="property_type",
+            comparator="eq",
+            value=body.property_type,
+            label=f"Property type: {body.property_type.title()}",
+            source="onboarding",
+        ))
 
     await db.commit()
     return {"message": "Non-negotiables updated"}

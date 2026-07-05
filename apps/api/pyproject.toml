@@ -19,7 +19,7 @@ dependencies = [
     "redis[hiredis]==5.0.7",
     "sentry-sdk[fastapi]==2.7.1",
     "python-jose[cryptography]==3.3.0",
-    "apify-client==1.7.1",
+    "apify-client==1.12.2",
     "resend==2.3.0",
 ]
 

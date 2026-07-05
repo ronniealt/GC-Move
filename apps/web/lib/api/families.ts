@@ -63,11 +63,12 @@ export function getFamilyMembers(
 export function setNonNegotiables(
   familyId: string,
   labels: string[],
-  token: string
+  token: string,
+  propertyType?: string
 ): Promise<{ message: string }> {
   return apiCall(`/api/families/${familyId}/non-negotiables`, {
     method: "PUT",
-    body: JSON.stringify({ labels }),
+    body: JSON.stringify({ labels, property_type: propertyType }),
     token,
   });
 }

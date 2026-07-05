@@ -19,6 +19,8 @@ const formatAUD = (price: number | null) => {
   }).format(price);
 };
 
+const REJECTED_STATUSES = new Set(["filtered", "rejected", "failed", "duplicate", "withdrawn"]);
+
 function statusBadge(status: string) {
   const base = "inline-flex px-2 py-0.5 rounded-full text-xs font-medium";
   switch (status) {
@@ -53,6 +55,7 @@ export default function PropertiesPage() {
 
   const [properties, setProperties] = useState<PropertyListResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<"matched" | "rejected">("matched");
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -84,58 +87,106 @@ export default function PropertiesPage() {
         </Link>
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-48 rounded-xl" />
-          ))}
-        </div>
-      ) : properties.length === 0 ? (
-        <Card className="p-12 text-center">
-          <p className="text-muted-foreground mb-4">
-            No properties yet. Add your first one to get started.
-          </p>
-          <Link href="/app/properties/new">
-            <Button style={{ backgroundColor: "#4A9B8E" }} className="text-white">
-              Add Property
-            </Button>
-          </Link>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {properties.map((prop) => (
-            <Card
-              key={prop.id}
-              className="p-5 cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => router.push(`/app/properties/${prop.id}`)}
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <p className="font-semibold text-sm leading-tight">{prop.address_street}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {prop.address_suburb}, {prop.address_postcode}
-                  </p>
-                </div>
-                {statusBadge(prop.status)}
-              </div>
+      {(() => {
+        const matched = properties.filter((p) => !REJECTED_STATUSES.has(p.status));
+        const rejected = properties.filter((p) => REJECTED_STATUSES.has(p.status));
+        const shown = tab === "matched" ? matched : rejected;
 
-              <p className="text-base font-bold mt-3">
-                {formatAUD(prop.listing_price_aud)}
-              </p>
-
-              <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                {prop.bedrooms !== null && (
-                  <span>{prop.bedrooms} bed{prop.bedrooms !== 1 ? "s" : ""}</span>
-                )}
-                {prop.bathrooms !== null && (
-                  <span>{prop.bathrooms} bath{prop.bathrooms !== 1 ? "s" : ""}</span>
-                )}
-                <span className="capitalize text-xs">{prop.property_type}</span>
+        return (
+          <>
+            {!loading && properties.length > 0 && (
+              <div className="flex items-center gap-2 mb-6 border-b">
+                <button
+                  className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                    tab === "matched"
+                      ? "border-[#4A9B8E] text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                  onClick={() => setTab("matched")}
+                >
+                  Matched ({matched.length})
+                </button>
+                <button
+                  className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                    tab === "rejected"
+                      ? "border-[#4A9B8E] text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                  onClick={() => setTab("rejected")}
+                >
+                  Rejected ({rejected.length})
+                </button>
               </div>
-            </Card>
-          ))}
-        </div>
-      )}
+            )}
+
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <Skeleton key={i} className="h-48 rounded-xl" />
+                ))}
+              </div>
+            ) : properties.length === 0 ? (
+              <Card className="p-12 text-center">
+                <p className="text-muted-foreground mb-4">
+                  No properties yet. Add your first one to get started.
+                </p>
+                <Link href="/app/properties/new">
+                  <Button style={{ backgroundColor: "#4A9B8E" }} className="text-white">
+                    Add Property
+                  </Button>
+                </Link>
+              </Card>
+            ) : shown.length === 0 ? (
+              <Card className="p-12 text-center">
+                <p className="text-muted-foreground">
+                  {tab === "matched"
+                    ? "No matched properties yet."
+                    : "Nothing rejected — good sign."}
+                </p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {shown.map((prop) => (
+                  <Card
+                    key={prop.id}
+                    className="relative p-5 cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => router.push(`/app/properties/${prop.id}`)}
+                  >
+                    {prop.auto_discovered && !prop.viewed_at && (
+                      <span className="absolute top-2 left-2 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
+                        New
+                      </span>
+                    )}
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <p className="font-semibold text-sm leading-tight">{prop.address_street}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {prop.address_suburb}, {prop.address_postcode}
+                        </p>
+                      </div>
+                      {statusBadge(prop.status)}
+                    </div>
+
+                    <p className="text-base font-bold mt-3">
+                      {formatAUD(prop.listing_price_aud)}
+                    </p>
+
+                    <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+                      {prop.bedrooms !== null && (
+                        <span>{prop.bedrooms} bed{prop.bedrooms !== 1 ? "s" : ""}</span>
+                      )}
+                      {prop.bathrooms !== null && (
+                        <span>{prop.bathrooms} bath{prop.bathrooms !== 1 ? "s" : ""}</span>
+                      )}
+                      <span className="capitalize text-xs">{prop.property_type}</span>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 }
